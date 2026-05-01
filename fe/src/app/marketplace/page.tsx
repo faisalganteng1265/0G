@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import Aurora from "@/components/Aurora";
+
 const mentors = [
   {
     id: 1,
@@ -70,8 +72,18 @@ export default function MarketplacePage() {
   const [activeNav, setActiveNav] = useState("MARKETPLACE");
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0b0d0f] font-mono text-[#d1d5db]">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#1f2937] bg-[#0d1014] px-5">
+    <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-[#0b0d0f] font-mono text-[#d1d5db]">
+      <div className="pointer-events-none absolute inset-0 -z-10 opacity-70">
+        <Aurora
+          colorStops={["#507f48", "#1b4315", "#433e55"]}
+          blend={0.5}
+          amplitude={1}
+          speed={1}
+        />
+      </div>
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[#0b0d0f]/60" />
+
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#1f2937] bg-[#0d1014]/90 px-5 backdrop-blur">
         <div className="flex items-center gap-8">
           <span className="text-base font-extrabold tracking-[0.15em] text-white">
             AI<span className={accent}>MENTOR</span>.X
@@ -124,7 +136,7 @@ export default function MarketplacePage() {
       </header>
 
       <div className="flex flex-1">
-        <aside className="flex w-[200px] shrink-0 flex-col justify-between border-r border-[#1f2937] bg-[#0d1014] py-4">
+        <aside className="flex w-[200px] shrink-0 flex-col justify-between border-r border-[#1f2937] bg-[#0d1014]/85 py-4 backdrop-blur">
           <div>
             <div className="flex items-center gap-2.5 px-4 pb-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(45,212,191,0.4)] bg-[rgba(45,212,191,0.15)]">
