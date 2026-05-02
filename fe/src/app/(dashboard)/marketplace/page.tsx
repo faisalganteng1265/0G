@@ -91,14 +91,14 @@ const subtleButtonClass =
 const accentButtonClass =
   "cursor-pointer rounded border border-[rgba(45,212,191,0.5)] bg-[rgba(45,212,191,0.08)] font-mono font-bold tracking-[0.1em] text-[#2dd4bf]";
 const badgeToneClasses = {
-  regulatory: "border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.09)] text-[#2dd4bf]",
+  regulatory: "border-[rgba(74,222,128,0.36)] bg-[rgba(74,222,128,0.09)] text-[#4ade80]",
   defi: "border-[rgba(129,140,248,0.38)] bg-[rgba(129,140,248,0.1)] text-[#a5b4fc]",
   security: "border-[rgba(251,191,36,0.38)] bg-[rgba(251,191,36,0.1)] text-[#fbbf24]",
 } satisfies Record<string, string>;
 
 const cardToneClasses = {
   regulatory:
-    "border-[rgba(45,212,191,0.42)] bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,0.18),transparent_34%),linear-gradient(180deg,rgba(9,18,19,0.98),rgba(7,10,12,0.96))] shadow-[0_0_30px_rgba(45,212,191,0.12)]",
+    "border-[rgba(74,222,128,0.38)] bg-[radial-gradient(circle_at_top_right,rgba(74,222,128,0.16),transparent_34%),linear-gradient(180deg,rgba(8,18,12,0.98),rgba(7,10,12,0.96))] shadow-[0_0_30px_rgba(74,222,128,0.1)]",
   defi:
     "border-[rgba(59,130,246,0.34)] bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_34%),linear-gradient(180deg,rgba(8,14,22,0.98),rgba(7,10,12,0.96))] shadow-[0_0_30px_rgba(59,130,246,0.1)]",
   security:
@@ -106,20 +106,20 @@ const cardToneClasses = {
 } satisfies Record<string, string>;
 
 const toneTextClasses = {
-  regulatory: "text-[#2dd4bf]",
+  regulatory: "text-[#4ade80]",
   defi: "text-[#60a5fa]",
   security: "text-[#fbbf24]",
 } satisfies Record<string, string>;
 
 const toneProgressClasses = {
-  regulatory: "bg-[#2dd4bf] shadow-[0_0_10px_rgba(45,212,191,0.7)]",
+  regulatory: "bg-[#4ade80] shadow-[0_0_10px_rgba(74,222,128,0.65)]",
   defi: "bg-[#60a5fa] shadow-[0_0_10px_rgba(96,165,250,0.65)]",
   security: "bg-[#fbbf24] shadow-[0_0_10px_rgba(251,191,36,0.65)]",
 } satisfies Record<string, string>;
 
 const buyAccessToneClasses = {
   regulatory:
-    "border-[#2dd4bf] bg-[#2dd4bf] text-[#031211] shadow-[0_0_18px_rgba(45,212,191,0.22)]",
+    "border-[#4ade80] bg-[#4ade80] text-[#041508] shadow-[0_0_18px_rgba(74,222,128,0.2)]",
   defi:
     "border-[#818cf8] bg-[#818cf8] text-[#090b1f] shadow-[0_0_18px_rgba(129,140,248,0.22)]",
   security:
@@ -226,7 +226,7 @@ export default function MarketplacePage() {
                 <div className="mb-4 flex items-start gap-4 pr-8">
                   <div
                     aria-label={`${mentor.name} avatar`}
-                    className={`h-16 w-16 shrink-0 rounded-md border bg-[#101215] bg-cover bg-center ${mentor.tone === "security" ? "border-[rgba(251,191,36,0.34)]" : mentor.tone === "defi" ? "border-[rgba(96,165,250,0.34)]" : "border-[rgba(45,212,191,0.34)]"}`}
+                    className={`h-16 w-16 shrink-0 rounded-md border bg-[#101215] bg-cover bg-center ${mentor.tone === "security" ? "border-[rgba(251,191,36,0.34)]" : mentor.tone === "defi" ? "border-[rgba(96,165,250,0.34)]" : "border-[rgba(74,222,128,0.34)]"}`}
                     role="img"
                     style={{ backgroundImage: `url(${mentor.image})` }}
                   />
