@@ -44,10 +44,20 @@ const pageCopy = {
   },
 } satisfies Record<PageKind, { title: string; description: string; eyebrow: string }>;
 
-function StatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+function StatCard({
+  label,
+  value,
+  detail,
+  boxed = true,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  boxed?: boolean;
+}) {
   return (
-    <div className={cardClass}>
-      <p className="mb-2 text-[9px] uppercase tracking-[0.14em] text-[#4b5563]">{label}</p>
+    <div className={boxed ? cardClass : ""}>
+      <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">{label}</p>
       <p className="mb-1 text-xl font-bold text-white">{value}</p>
       <p className="text-[10px] leading-[1.5] text-[#6b7280]">{detail}</p>
     </div>
@@ -79,9 +89,33 @@ function StatusPill({ children, tone = "accent" }: { children: string; tone?: "a
 
 function MentorsView() {
   const mentors = [
-    ["IndoRegulator_01", "Regulatory playbook", "78 docs staged", "12 gaps", "DRAFT"],
-    ["ExportOps_APAC", "Cross-border ops", "31 docs staged", "4 gaps", "REVIEW"],
-    ["DeFiTax_Advisor", "Crypto tax tactics", "19 docs staged", "0 gaps", "READY"],
+    {
+      name: "IndoRegulator_01",
+      type: "Regulatory playbook",
+      docs: "78 docs staged",
+      gaps: "12 gaps",
+      status: "DRAFT",
+      image:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
+    },
+    {
+      name: "ExportOps_APAC",
+      type: "Cross-border ops",
+      docs: "31 docs staged",
+      gaps: "4 gaps",
+      status: "REVIEW",
+      image:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
+    },
+    {
+      name: "DeFiTax_Advisor",
+      type: "Crypto tax tactics",
+      docs: "19 docs staged",
+      gaps: "0 gaps",
+      status: "READY",
+      image:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
+    },
   ];
 
   return (
@@ -96,16 +130,37 @@ function MentorsView() {
         <div className={cardClass}>
           <SectionTitle icon="⬡" title="Mentor Knowledge Packages" />
           <div className="flex flex-col gap-3">
-            {mentors.map(([name, type, docs, gaps, status]) => (
-              <div key={name} className="flex items-center justify-between gap-4 rounded border border-[#242830] bg-[#101215] p-3">
-                <div>
-                  <div className="mb-1.5 flex items-center gap-2">
-                    <p className="text-xs font-bold text-white">{name}</p>
-                    <StatusPill tone={status === "READY" ? "accent" : status === "REVIEW" ? "warn" : "muted"}>
-                      {status}
-                    </StatusPill>
+            {mentors.map((mentor) => (
+              <div
+                key={mentor.name}
+                className="flex items-center justify-between gap-4 rounded border border-[#242830] bg-[#101215] p-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    aria-label={`${mentor.name} avatar`}
+                    className="h-12 w-12 shrink-0 rounded-md border border-[#343840] bg-[#262a30] bg-cover bg-center"
+                    role="img"
+                    style={{ backgroundImage: `url(${mentor.image})` }}
+                  />
+                  <div className="min-w-0">
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <p className="truncate text-xs font-bold text-white">{mentor.name}</p>
+                      <StatusPill
+                        tone={
+                          mentor.status === "READY"
+                            ? "accent"
+                            : mentor.status === "REVIEW"
+                              ? "warn"
+                              : "muted"
+                        }
+                      >
+                        {mentor.status}
+                      </StatusPill>
+                    </div>
+                    <p className="truncate text-[10px] text-[#6b7280]">
+                      {mentor.type} • {mentor.docs} • {mentor.gaps}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-[#6b7280]">{type} • {docs} • {gaps}</p>
                 </div>
                 <button className={`px-3 py-1.5 text-[9px] ${accentButtonClass}`}>OPEN STUDIO</button>
               </div>
@@ -144,10 +199,10 @@ function SharesView() {
   return (
     <>
       <div className="mb-4 grid grid-cols-4 gap-4">
-        <StatCard label="Portfolio Value" value="684K 0G" detail="Mock access share mark-to-market." />
-        <StatCard label="Usage Rewards" value="107.9 0G" detail="Unclaimed curator reward estimate." />
-        <StatCard label="Active Mentors" value="3" detail="Mentors with share exposure." />
-        <StatCard label="Avg Yield" value="11.4%" detail="Weekly usage reward trend." />
+        <StatCard boxed={false} label="Portfolio Value" value="684K 0G" detail="Mock access share mark-to-market." />
+        <StatCard boxed={false} label="Usage Rewards" value="107.9 0G" detail="Unclaimed curator reward estimate." />
+        <StatCard boxed={false} label="Active Mentors" value="3" detail="Mentors with share exposure." />
+        <StatCard boxed={false} label="Avg Yield" value="11.4%" detail="Weekly usage reward trend." />
       </div>
       <div className={cardClass}>
         <SectionTitle icon="◈" title="Share Positions" />
