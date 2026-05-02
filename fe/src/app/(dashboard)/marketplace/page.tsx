@@ -44,8 +44,8 @@ const gapReports = [
 ];
 
 const topMentors = [
-  { id: 1, name: "ZeroKn_Oracle", change: "+14.2% This Week", avatar: "ZO" },
-  { id: 2, name: "AlphaYield_Bot", change: "+9.5% This Week", avatar: "AY" },
+  { ...mentors[2], change: "+14.2% This Week" },
+  { ...mentors[0], change: "+9.5% This Week" },
 ];
 
 const panelClass = "border border-[#2a2d32] bg-[#15171a]";
@@ -60,15 +60,15 @@ export default function MarketplacePage() {
 
   return (
     <>
-          <div className="mb-6 flex items-start justify-between">
-            <div>
+          <div className="mb-6 flex flex-wrap items-start gap-x-4 gap-y-3">
+            <div className="max-w-[520px]">
               <h1 className="mb-1.5 text-2xl font-bold text-white">Marketplace Explorer</h1>
-              <p className="max-w-[520px] text-xs leading-[1.6] text-[#6b7280]">
+              <p className="text-xs leading-[1.6] text-[#6b7280]">
                 Discover, analyze, and stake in elite AI mentors across specialized knowledge sectors.
                 Secure enclave execution guaranteed.
               </p>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-2">
+            <div className="flex flex-col items-start gap-2 pt-0.5">
               <div className="flex gap-2">
                 {["TRENDING", "HIGHEST YIELD"].map((filter) => (
                   <button
@@ -164,7 +164,7 @@ export default function MarketplacePage() {
                       <p className="mb-0.5 text-xs font-semibold text-[#e5e7eb]">{report.title}</p>
                       <p className="text-[10px] text-[#4b5563]">{report.sub}</p>
                     </div>
-                    <button className={`shrink-0 px-2.5 py-1.5 text-[9px] ${subtleButtonClass}`}>
+                    <button className={`shrink-0 px-4 py-2 text-[10px] ${subtleButtonClass}`}>
                       VIEW REPORT
                     </button>
                   </div>
@@ -183,15 +183,18 @@ export default function MarketplacePage() {
                 {topMentors.map((mentor) => (
                   <div key={mentor.id} className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#343840] bg-[#262a30] text-[10px] font-bold text-white">
-                        {mentor.avatar}
-                      </div>
+                      <div
+                        aria-label={`${mentor.name} avatar`}
+                        className="h-8 w-8 shrink-0 rounded border border-[#343840] bg-[#262a30] bg-cover bg-center"
+                        role="img"
+                        style={{ backgroundImage: `url(${mentor.image})` }}
+                      />
                       <div>
                         <p className="mb-0.5 text-xs font-semibold text-[#e5e7eb]">{mentor.name}</p>
                         <p className="text-[10px] font-semibold text-[#2dd4bf]">{mentor.change}</p>
                       </div>
                     </div>
-                    <button className={`shrink-0 px-2.5 py-1.5 text-[9px] ${accentButtonClass}`}>
+                    <button className={`shrink-0 px-4 py-2 text-[10px] ${accentButtonClass}`}>
                       BUY SHARES
                     </button>
                   </div>
