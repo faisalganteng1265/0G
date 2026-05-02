@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { MouseEvent } from "react";
 
 const sidebarLinks = [
   { label: "MARKETPLACE", icon: "⊞", href: "/marketplace" },
@@ -17,6 +19,27 @@ const nodeLogoSrc =
 
 export default function MarketplaceSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function handleRouteClick(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (pathname === href) {
+      event.preventDefault();
+      return;
+    }
+
+    const panel = document.querySelector(".route-panel-transition");
+
+    if (!panel) {
+      return;
+    }
+
+    event.preventDefault();
+    panel.classList.add("route-panel-transition--leaving");
+
+    window.setTimeout(() => {
+      router.push(href);
+    }, 180);
+  }
 
   return (
     <aside className="flex w-[200px] shrink-0 flex-col justify-between rounded-lg border border-[#2a2d32] bg-[#050607]/95 py-4 shadow-2xl shadow-black/30">
@@ -50,6 +73,7 @@ export default function MarketplaceSidebar() {
                     : "border-transparent bg-transparent text-[#6b7280]"
                 }`}
                 href={link.href}
+                onClick={(event) => handleRouteClick(event, link.href)}
               >
                 <span className="text-[13px]">{link.icon}</span>
                 {link.label}
