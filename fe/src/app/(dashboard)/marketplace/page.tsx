@@ -1,6 +1,22 @@
 "use client";
 
-import { ArrowRight, BarChart3, ChevronDown, FileText, Lock, MessageSquare, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  ChevronDown,
+  ClipboardList,
+  Crosshair,
+  FileText,
+  Lock,
+  MessageSquare,
+  ShieldCheck,
+  Snowflake,
+  TrendingUp,
+  UserRound,
+  Users,
+  Wallet,
+  Waves,
+} from "lucide-react";
 import { useState } from "react";
 
 const mentors = [
@@ -46,15 +62,28 @@ const mentors = [
 ];
 
 const gapReports = [
-  { id: 1, title: "EU MiCA Compliance V2", category: "Regulatory", mentors: 42, status: "HIGH", reward: "+18.4K" },
-  { id: 2, title: "L2 Rollup Security Exploits", category: "CyberSec", mentors: 89, status: "HOT", reward: "+31.2K" },
-  { id: 3, title: "MEV Protection Mechanisms", category: "DeFi", mentors: 37, status: "RISING", reward: "+12.7K" },
+  { id: 1, title: "EU MiCA Compliance V2", category: "Regulatory", mentors: 42, status: "HIGH", reward: "+18.4K", icon: ClipboardList },
+  { id: 2, title: "L2 Rollup Security Exploits", category: "CyberSec", mentors: 89, status: "HOT", reward: "+31.2K", icon: Crosshair },
+  { id: 3, title: "MEV Protection Mechanisms", category: "DeFi", mentors: 37, status: "RISING", reward: "+12.7K", icon: UserRound },
 ];
 
 const topMentors = [
   { ...mentors[2], change: "+14.2% This Week" },
   { ...mentors[0], change: "+9.5% This Week" },
   { ...mentors[1], change: "+7.8% This Week" },
+];
+
+const marketplaceStats = [
+  { label: "ACTIVE MENTORS", value: "142", sub: "+8 this week", icon: Users, tone: "text-[#2dd4bf]" },
+  { label: "TOTAL VALUE LOCKED", value: "12.48M 0G", sub: "+6.2%", icon: Lock, tone: "text-[#2dd4bf]" },
+  { label: "AVG. CONFIDENCE", value: "92.7%", sub: "+3.1%", icon: Waves, tone: "text-[#2dd4bf]" },
+  { label: "GAP OPPORTUNITIES", value: "27", sub: "High Potential", icon: Crosshair, tone: "text-[#fbbf24]" },
+];
+
+const filterOptions = [
+  { label: "TRENDING", icon: TrendingUp },
+  { label: "HIGHEST YIELD", icon: Wallet },
+  { label: "NEW KNOWLEDGE", icon: Snowflake },
 ];
 
 const subtleButtonClass =
@@ -128,45 +157,61 @@ export default function MarketplacePage() {
 
   return (
     <>
-          <div className="mb-6 flex flex-wrap items-start gap-x-4 gap-y-3">
-            <div className="max-w-[620px]">
-              <h1 className="mb-1.5 text-2xl font-bold text-white">Marketplace Explorer</h1>
-              <p className="text-xs leading-[1.6] text-[#6b7280]">
-                Discover, analyze, and stake in elite AI mentors across specialized knowledge sectors.
-                Secure enclave execution guaranteed.
-              </p>
+          <div className="mb-5">
+            <div className="mb-4 flex items-start justify-between gap-6">
+              <div className="max-w-[610px] shrink-0">
+                <h1 className="mb-2 text-2xl font-bold text-white">Marketplace Explorer</h1>
+                <p className="text-xs leading-[1.65] text-[#8b929d]">
+                  Discover, analyze, and stake in elite AI mentors across specialized knowledge sectors.
+                  Secure enclave execution guaranteed.
+                </p>
+              </div>
+
+              <div className="grid flex-1 grid-cols-4 gap-3">
+                {marketplaceStats.map((stat) => {
+                  const StatIcon = stat.icon;
+
+                  return (
+                    <div
+                      key={stat.label}
+                      className="flex min-h-[76px] items-center gap-3 rounded border border-[#25313a] bg-[#0d1114]/88 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                    >
+                      <StatIcon className={`h-5 w-5 shrink-0 ${stat.tone}`} aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.13em] text-[#6b7280]">
+                          {stat.label}
+                        </p>
+                        <p className="text-lg font-extrabold leading-none text-white">{stat.value}</p>
+                        <p className={`mt-1 text-[10px] font-bold ${stat.tone}`}>{stat.sub}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="flex flex-col items-start gap-2 pt-0.5">
-              <div className="flex gap-2">
-                {["TRENDING", "HIGHEST YIELD"].map((filter) => (
+
+            <div className="flex gap-3">
+              {filterOptions.map((filter) => {
+                const FilterIcon = filter.icon;
+                const isActive = activeFilter === filter.label;
+
+                return (
                   <button
-                    key={filter}
-                    onClick={() => setActiveFilter(filter)}
-                    className={`flex min-h-10 cursor-pointer items-center gap-1 rounded border px-4 py-2 font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
-                      activeFilter === filter
-                        ? "border-[rgba(45,212,191,0.6)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]"
-                        : "border-[#1f2937] bg-transparent text-[#6b7280]"
+                    key={filter.label}
+                    onClick={() => setActiveFilter(filter.label)}
+                    className={`flex min-h-11 cursor-pointer items-center gap-2 rounded border px-5 py-2.5 font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
+                      isActive
+                        ? "border-[rgba(45,212,191,0.7)] bg-[rgba(45,212,191,0.1)] text-[#2dd4bf] shadow-[0_0_16px_rgba(45,212,191,0.1)]"
+                        : "border-[#1f2937] bg-[#0b0f12]/65 text-[#8b929d]"
                     }`}
                   >
-                    {filter === "TRENDING" && "↑ "}
-                    {filter}
+                    <FilterIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    {filter.label}
                   </button>
-                ))}
-              </div>
-              <button
-                onClick={() => setActiveFilter("NEW KNOWLEDGE")}
-                className={`min-h-10 cursor-pointer rounded border px-4 py-2 font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
-                  activeFilter === "NEW KNOWLEDGE"
-                    ? "border-[rgba(45,212,191,0.6)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]"
-                    : "border-[#1f2937] bg-transparent text-[#6b7280]"
-                }`}
-              >
-                NEW KNOWLEDGE
-              </button>
+                );
+              })}
             </div>
           </div>
-
-          <div className="mb-4 h-px w-full bg-[#1f2937]" />
 
           <div className="mb-4 grid grid-cols-3 gap-4">
             {mentors.map((mentor, index) => (
@@ -245,21 +290,23 @@ export default function MarketplacePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg border border-[rgba(45,212,191,0.24)] bg-[linear-gradient(180deg,rgba(7,17,18,0.98),rgba(8,11,13,0.96))] p-4 shadow-[0_0_28px_rgba(45,212,191,0.08)]">
-              <div className="mb-4 flex items-center justify-between gap-4 border-b border-[#1f2937] pb-3">
+            <div className="rounded-lg border border-[rgba(45,212,191,0.22)] bg-[linear-gradient(180deg,rgba(6,18,18,0.92),rgba(6,9,11,0.98))] p-4 shadow-[inset_0_1px_0_rgba(45,212,191,0.08),0_0_28px_rgba(45,212,191,0.07)]">
+              <div className="mb-3 flex items-center justify-between gap-4 border-b border-[#1a2630] pb-3">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-[#2dd4bf]" aria-hidden="true" />
-                  <h2 className="text-[13px] font-bold tracking-[0.05em] text-white">
+                  <span className="flex h-5 w-5 items-center justify-center rounded border border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)]">
+                    <FileText className="h-3.5 w-3.5 text-[#2dd4bf]" aria-hidden="true" />
+                  </span>
+                  <h2 className="text-[13px] font-extrabold tracking-[0.08em] text-white">
                     TRENDING GAP REPORTS
                   </h2>
                 </div>
-                <button className="flex items-center gap-2 rounded border border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)] px-3 py-1.5 font-mono text-[9px] font-bold tracking-[0.1em] text-[#2dd4bf]">
+                <button className="flex min-h-0 items-center gap-2 rounded border border-[rgba(45,212,191,0.34)] bg-[rgba(45,212,191,0.06)] px-3 py-1.5 font-mono text-[9px] font-bold tracking-[0.12em] text-[#2dd4bf]">
                   OPPORTUNITY QUEUE
                   <ArrowRight className="h-3 w-3" aria-hidden="true" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-[1.4fr_0.55fr_0.45fr_0.55fr_0.7fr_0.65fr] gap-3 border-b border-[#15202a] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#5b6470]">
+              <div className="grid grid-cols-[1.45fr_0.58fr_0.42fr_0.52fr_0.7fr_0.62fr] gap-3 border-b border-[#14212a] px-1 pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#5b6470]">
                 <span>REPORT</span>
                 <span>CATEGORY</span>
                 <span>MENTORS</span>
@@ -269,14 +316,17 @@ export default function MarketplacePage() {
               </div>
 
               <div>
-                {gapReports.map((report) => (
+                {gapReports.map((report) => {
+                  const ReportIcon = report.icon;
+
+                  return (
                   <div
                     key={report.id}
-                    className="grid grid-cols-[1.4fr_0.55fr_0.45fr_0.55fr_0.7fr_0.65fr] items-center gap-3 border-b border-[#15202a] py-3 text-[10px]"
+                    className="grid grid-cols-[1.45fr_0.58fr_0.42fr_0.52fr_0.7fr_0.62fr] items-center gap-3 border-b border-[#14212a] px-1 py-3 text-[10px]"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[rgba(45,212,191,0.25)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]">
-                        <Sparkles className="h-4 w-4" aria-hidden="true" />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[rgba(45,212,191,0.24)] bg-[rgba(45,212,191,0.07)] text-[#2dd4bf] shadow-[0_0_12px_rgba(45,212,191,0.08)]">
+                        <ReportIcon className="h-4 w-4" aria-hidden="true" />
                       </div>
                       <span className="truncate font-bold text-[#e5e7eb]">{report.title}</span>
                     </div>
@@ -285,15 +335,16 @@ export default function MarketplacePage() {
                     <span className={`w-fit rounded border px-2 py-1 text-[9px] font-bold tracking-[0.08em] ${statusClasses[report.status]}`}>
                       {report.status}
                     </span>
-                    <span className="font-extrabold text-[#2dd4bf]">{report.reward}</span>
-                    <button className={`px-3 py-1.5 text-[9px] ${accentButtonClass}`}>
+                    <span className="font-extrabold text-[#2dd4bf]">{report.reward} 0G</span>
+                    <button className="min-h-0 rounded border border-[rgba(45,212,191,0.4)] bg-[rgba(45,212,191,0.06)] px-3 py-1.5 font-mono text-[9px] font-bold tracking-[0.1em] text-[#2dd4bf]">
                       VIEW REPORT
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <button className="mx-auto mt-3 flex items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">
+              <button className="mx-auto mt-3 flex min-h-0 items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">
                 VIEW ALL REPORTS
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
