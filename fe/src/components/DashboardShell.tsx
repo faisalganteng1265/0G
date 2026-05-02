@@ -12,7 +12,7 @@ interface DashboardShellProps {
 
 export default function DashboardShell({ children }: DashboardShellProps) {
   return (
-    <div className="relative isolate flex min-h-screen flex-col gap-4 overflow-hidden bg-[#0b0d0f] p-4 font-mono text-[#d1d5db]">
+    <div className="relative isolate flex h-screen flex-col gap-4 overflow-hidden bg-[#0b0d0f] p-4 font-mono text-[#d1d5db]">
       <div className="pointer-events-none absolute inset-0 -z-10 opacity-95">
         <Dither
           waveColor={[0.17647058823529413, 0.8313725490196079, 0.7490196078431373]}
@@ -109,9 +109,9 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 gap-4">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         <MarketplaceSidebar />
-        <main className="dashboard-content flex-1 overflow-y-auto rounded-lg border border-[#2a2d32] bg-[#050607]/95 p-7 shadow-2xl shadow-black/30">
+        <main className="dashboard-content min-h-0 flex-1 overflow-y-auto rounded-lg border border-[#2a2d32] bg-[#050607]/95 p-7 shadow-2xl shadow-black/30">
           {children}
         </main>
       </div>

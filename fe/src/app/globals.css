@@ -85,6 +85,30 @@ a {
   height: 3.25rem !important;
 }
 
+.dashboard-content {
+  scrollbar-color: rgba(45, 212, 191, 0.75) rgba(5, 6, 7, 0.8);
+  scrollbar-width: thin;
+}
+
+.dashboard-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.dashboard-content::-webkit-scrollbar-track {
+  background: rgba(5, 6, 7, 0.8);
+  border-left: 1px solid rgba(42, 45, 50, 0.8);
+}
+
+.dashboard-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.85), rgba(45, 212, 191, 0.35));
+  border: 2px solid rgba(5, 6, 7, 0.95);
+  border-radius: 999px;
+}
+
+.dashboard-content::-webkit-scrollbar-thumb:hover {
+  background: #2dd4bf;
+}
+
 .route-panel-transition {
   min-height: 100%;
   transform-origin: top center;
