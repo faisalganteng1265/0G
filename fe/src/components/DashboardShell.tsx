@@ -3,7 +3,7 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ReactNode } from "react";
 
-import Aurora from "@/components/Aurora";
+import Dither from "@/components/Dither";
 import MarketplaceSidebar from "@/components/MarketplaceSidebar";
 
 interface DashboardShellProps {
@@ -13,15 +13,19 @@ interface DashboardShellProps {
 export default function DashboardShell({ children }: DashboardShellProps) {
   return (
     <div className="relative isolate flex min-h-screen flex-col gap-4 overflow-hidden bg-[#0b0d0f] p-4 font-mono text-[#d1d5db]">
-      <div className="pointer-events-none absolute inset-0 -z-10 opacity-70">
-        <Aurora
-          colorStops={["#507f48", "#1b4315", "#433e55"]}
-          blend={0.75}
-          amplitude={2.4}
-          speed={1}
+      <div className="pointer-events-none absolute inset-0 -z-10 opacity-95">
+        <Dither
+          waveColor={[0.17647058823529413, 0.8313725490196079, 0.7490196078431373]}
+          disableAnimation={false}
+          enableMouseInteraction
+          mouseRadius={0.3}
+          colorNum={4}
+          waveAmplitude={0.38}
+          waveFrequency={3}
+          waveSpeed={0.05}
         />
       </div>
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[#0b0d0f]/64" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[#0b0d0f]/45" />
 
       <header className="flex h-12 shrink-0 items-center justify-between rounded-lg border border-[#2a2d32] bg-[#050607]/95 px-5 shadow-2xl shadow-black/30">
         <div className="flex min-w-0 items-center gap-8">
