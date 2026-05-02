@@ -30,6 +30,61 @@ a {
   text-decoration: none;
 }
 
+.dashboard-content .text-\[9px\] {
+  font-size: 10.5px !important;
+}
+
+.dashboard-content .text-\[10px\] {
+  font-size: 11.5px !important;
+}
+
+.dashboard-content .text-\[11px\] {
+  font-size: 12.5px !important;
+}
+
+.dashboard-content .text-xs {
+  font-size: 13.5px !important;
+}
+
+.dashboard-content .text-\[13px\] {
+  font-size: 14.5px !important;
+}
+
+.dashboard-content .text-xl {
+  font-size: 22px !important;
+}
+
+.dashboard-content .text-2xl {
+  font-size: 26px !important;
+}
+
+.dashboard-content .p-3 {
+  padding: 1rem !important;
+}
+
+.dashboard-content .p-4 {
+  padding: 1.25rem !important;
+}
+
+.dashboard-content button {
+  min-height: 34px;
+}
+
+.dashboard-content .h-8.w-8 {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+}
+
+.dashboard-content .h-10.w-10 {
+  width: 2.75rem !important;
+  height: 2.75rem !important;
+}
+
+.dashboard-content .h-12.w-12 {
+  width: 3.25rem !important;
+  height: 3.25rem !important;
+}
+
 .route-panel-transition {
   min-height: 100%;
   transform-origin: top center;

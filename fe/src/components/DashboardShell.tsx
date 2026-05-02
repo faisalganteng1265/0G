@@ -111,7 +111,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
       <div className="flex min-h-0 flex-1 gap-4">
         <MarketplaceSidebar />
-        <main className="flex-1 overflow-y-auto rounded-lg border border-[#2a2d32] bg-[#050607]/95 p-6 shadow-2xl shadow-black/30">
+        <main className="dashboard-content flex-1 overflow-y-auto rounded-lg border border-[#2a2d32] bg-[#050607]/95 p-7 shadow-2xl shadow-black/30">
           {children}
         </main>
       </div>

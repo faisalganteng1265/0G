@@ -61,7 +61,7 @@ export default function MarketplacePage() {
   return (
     <>
           <div className="mb-6 flex flex-wrap items-start gap-x-4 gap-y-3">
-            <div className="max-w-[520px]">
+            <div className="max-w-[620px]">
               <h1 className="mb-1.5 text-2xl font-bold text-white">Marketplace Explorer</h1>
               <p className="text-xs leading-[1.6] text-[#6b7280]">
                 Discover, analyze, and stake in elite AI mentors across specialized knowledge sectors.
@@ -74,7 +74,7 @@ export default function MarketplacePage() {
                   <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}
-                    className={`flex cursor-pointer items-center gap-1 rounded border px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.12em] transition-colors ${
+                    className={`flex min-h-10 cursor-pointer items-center gap-1 rounded border px-4 py-2 font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
                       activeFilter === filter
                         ? "border-[rgba(45,212,191,0.6)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]"
                         : "border-[#1f2937] bg-transparent text-[#6b7280]"
@@ -87,7 +87,7 @@ export default function MarketplacePage() {
               </div>
               <button
                 onClick={() => setActiveFilter("NEW KNOWLEDGE")}
-                className={`cursor-pointer rounded border px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.12em] transition-colors ${
+                className={`min-h-10 cursor-pointer rounded border px-4 py-2 font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
                   activeFilter === "NEW KNOWLEDGE"
                     ? "border-[rgba(45,212,191,0.6)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]"
                     : "border-[#1f2937] bg-transparent text-[#6b7280]"
