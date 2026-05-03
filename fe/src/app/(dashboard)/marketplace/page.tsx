@@ -290,8 +290,8 @@ export default function MarketplacePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg border border-[rgba(45,212,191,0.22)] bg-[linear-gradient(180deg,rgba(6,18,18,0.92),rgba(6,9,11,0.98))] p-4 shadow-[inset_0_1px_0_rgba(45,212,191,0.08),0_0_28px_rgba(45,212,191,0.07)]">
-              <div className="mb-3 flex items-center justify-between gap-4 border-b border-[#1a2630] pb-3">
+            <div className="rounded-lg border border-[rgba(45,212,191,0.22)] bg-[linear-gradient(180deg,rgba(6,18,18,0.92),rgba(6,9,11,0.98))] px-4 py-3 shadow-[inset_0_1px_0_rgba(45,212,191,0.08),0_0_28px_rgba(45,212,191,0.07)]">
+              <div className="mb-2.5 flex items-center justify-between gap-4 border-b border-[#1a2630] pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded border border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)]">
                     <FileText className="h-3.5 w-3.5 text-[#2dd4bf]" aria-hidden="true" />
@@ -306,7 +306,7 @@ export default function MarketplacePage() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-[1.45fr_0.58fr_0.42fr_0.52fr_0.7fr_0.62fr] gap-3 border-b border-[#14212a] px-1 pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#5b6470]">
+              <div className="grid grid-cols-[1.4fr_0.55fr_0.4fr_0.5fr_0.62fr_0.78fr] gap-3 border-b border-[#14212a] px-1 pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#5b6470]">
                 <span>REPORT</span>
                 <span>CATEGORY</span>
                 <span>MENTORS</span>
@@ -322,7 +322,7 @@ export default function MarketplacePage() {
                   return (
                   <div
                     key={report.id}
-                    className="grid grid-cols-[1.45fr_0.58fr_0.42fr_0.52fr_0.7fr_0.62fr] items-center gap-3 border-b border-[#14212a] px-1 py-3 text-[10px]"
+                    className="grid grid-cols-[1.4fr_0.55fr_0.4fr_0.5fr_0.62fr_0.78fr] items-center gap-3 border-b border-[#14212a] px-1 py-2.5 text-[10px]"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[rgba(45,212,191,0.24)] bg-[rgba(45,212,191,0.07)] text-[#2dd4bf] shadow-[0_0_12px_rgba(45,212,191,0.08)]">
@@ -336,7 +336,7 @@ export default function MarketplacePage() {
                       {report.status}
                     </span>
                     <span className="font-extrabold text-[#2dd4bf]">{report.reward} 0G</span>
-                    <button className="min-h-0 rounded border border-[rgba(45,212,191,0.4)] bg-[rgba(45,212,191,0.06)] px-3 py-1.5 font-mono text-[9px] font-bold tracking-[0.1em] text-[#2dd4bf]">
+                    <button className="min-h-0 whitespace-nowrap rounded border border-[rgba(45,212,191,0.4)] bg-[rgba(45,212,191,0.06)] px-3 py-1.5 font-mono text-[9px] font-bold tracking-[0.1em] text-[#2dd4bf]">
                       VIEW REPORT
                     </button>
                   </div>
@@ -344,14 +344,14 @@ export default function MarketplacePage() {
                 })}
               </div>
 
-              <button className="mx-auto mt-3 flex min-h-0 items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">
+              <button className="mx-auto mt-2.5 flex min-h-0 items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">
                 VIEW ALL REPORTS
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="rounded-lg border border-[#2a2d32] bg-[linear-gradient(180deg,rgba(13,16,19,0.98),rgba(8,11,13,0.96))] p-4 shadow-[0_0_28px_rgba(45,212,191,0.05)]">
-              <div className="mb-4 flex items-center justify-between gap-4 border-b border-[#1f2937] pb-3">
+            <div className="rounded-lg border border-[#2a2d32] bg-[linear-gradient(180deg,rgba(13,16,19,0.98),rgba(8,11,13,0.96))] px-4 py-3 shadow-[0_0_28px_rgba(45,212,191,0.05)]">
+              <div className="mb-2.5 flex items-center justify-between gap-4 border-b border-[#1f2937] pb-2.5">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-[#2dd4bf]" aria-hidden="true" />
                   <h2 className="text-[13px] font-bold tracking-[0.05em] text-white">
@@ -375,7 +375,7 @@ export default function MarketplacePage() {
                 {topMentors.map((mentor) => (
                   <div
                     key={mentor.id}
-                    className="grid grid-cols-[1.35fr_0.55fr_0.55fr_0.75fr] items-center gap-3 border-b border-[#15202a] py-2.5"
+                    className="grid grid-cols-[1.35fr_0.55fr_0.55fr_0.75fr] items-center gap-3 border-b border-[#15202a] py-2"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div
@@ -395,7 +395,7 @@ export default function MarketplacePage() {
                 ))}
               </div>
 
-              <button className="mx-auto mt-3 flex items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">
+              <button className="mx-auto mt-2.5 flex items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">
                 VIEW ALL MENTORS
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </button>

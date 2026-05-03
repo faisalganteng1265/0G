@@ -67,16 +67,21 @@ export default function MarketplaceSidebar() {
             return (
               <Link
                 key={link.label}
-                className={`flex w-full cursor-pointer items-center gap-3 rounded border px-3.5 py-2.5 text-left font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
+                className={`relative flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded border px-3.5 py-3 text-left font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
                   isActive
-                    ? "border-[rgba(45,212,191,0.25)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]"
-                    : "border-transparent bg-transparent text-[#6b7280]"
+                    ? "border-[rgba(45,212,191,0.34)] bg-[linear-gradient(90deg,rgba(45,212,191,0.16),rgba(45,212,191,0.06))] text-[#2dd4bf] shadow-[inset_-3px_0_0_#2dd4bf,0_0_18px_rgba(45,212,191,0.12)]"
+                    : "border-transparent bg-transparent text-[#6b7280] hover:bg-[#101517] hover:text-[#9ca3af]"
                 }`}
                 href={link.href}
                 onClick={(event) => handleRouteClick(event, link.href)}
               >
                 <span className="text-[15px]">{link.icon}</span>
                 {link.label}
+                {isActive && (
+                  <span className="ml-auto text-[10px] font-extrabold text-[#2dd4bf]" aria-hidden="true">
+                    +
+                  </span>
+                )}
               </Link>
             );
           })}
