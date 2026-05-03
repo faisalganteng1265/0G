@@ -58,6 +58,38 @@ a {
   font-size: 24px !important;
 }
 
+.dashboard-content .mentor-studio-reference .text-\[8px\] {
+  font-size: 8px !important;
+}
+
+.dashboard-content .mentor-studio-reference .text-\[9px\] {
+  font-size: 9px !important;
+}
+
+.dashboard-content .mentor-studio-reference .text-\[10px\] {
+  font-size: 10px !important;
+}
+
+.dashboard-content .mentor-studio-reference .text-\[11px\] {
+  font-size: 11px !important;
+}
+
+.dashboard-content .mentor-studio-reference .text-xs {
+  font-size: 12px !important;
+}
+
+.dashboard-content .mentor-studio-reference .text-\[13px\] {
+  font-size: 13px !important;
+}
+
+.dashboard-content .mentor-studio-reference .text-\[18px\] {
+  font-size: 18px !important;
+}
+
+.dashboard-content .mentor-studio-reference .text-\[22px\] {
+  font-size: 22px !important;
+}
+
 .dashboard-content .p-3 {
   padding: 0.875rem !important;
 }

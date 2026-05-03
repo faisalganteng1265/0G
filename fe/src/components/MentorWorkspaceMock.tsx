@@ -4,12 +4,13 @@ interface MentorWorkspaceMockProps {
   kind: PageKind;
 }
 
-const panelClass = "border border-[#2a2d32] bg-[#15171a]";
+const panelClass =
+  "border border-[rgba(96,165,250,0.24)] bg-[rgba(5,12,15,0.78)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_26px_rgba(45,212,191,0.06)]";
 const cardClass = `${panelClass} rounded-lg p-4`;
 const subtleButtonClass =
-  "cursor-pointer rounded border border-[#374151] bg-transparent font-mono font-bold tracking-[0.1em] text-[#9ca3af]";
+  "cursor-pointer rounded border border-[rgba(96,165,250,0.28)] bg-[rgba(5,12,15,0.58)] font-mono font-bold tracking-[0.1em] text-[#8f9cac]";
 const accentButtonClass =
-  "cursor-pointer rounded border border-[rgba(45,212,191,0.5)] bg-[rgba(45,212,191,0.08)] font-mono font-bold tracking-[0.1em] text-[#2dd4bf]";
+  "cursor-pointer rounded border border-[rgba(45,212,191,0.62)] bg-[rgba(45,212,191,0.08)] font-mono font-bold tracking-[0.1em] text-[#2dd4bf] shadow-[0_0_16px_rgba(45,212,191,0.08)]";
 
 const pageCopy = {
   mentors: {
@@ -140,10 +141,10 @@ function MentorsView() {
   };
 
   const solidAccentBtn =
-    "cursor-pointer rounded bg-[#2dd4bf] font-mono font-bold tracking-[0.1em] text-black";
+    "cursor-pointer rounded bg-[linear-gradient(90deg,#2dd4bf,#22d3ee)] font-mono font-bold tracking-[0.14em] text-[#021011] shadow-[0_0_22px_rgba(45,212,191,0.26)]";
 
   const tagPill =
-    "flex items-center gap-1 rounded border border-[#242830] bg-[#0b0d0f] px-2 py-0.5 text-[9px] text-[#6b7280]";
+    "flex items-center gap-1 rounded border border-[rgba(96,165,250,0.12)] bg-[rgba(255,255,255,0.035)] px-2 py-0.5 text-[9px] text-[#66717f]";
 
   const mintSteps = [
     { n: 1, label: "PACKAGE", value: "Select a knowledge package", valueClass: "text-[#4b5563]", dropdown: true },
@@ -193,11 +194,11 @@ function MentorsView() {
   return (
     <>
       {/* Stat cards */}
-      <div className="mb-4 grid grid-cols-4 gap-3">
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {/* Knowledge Vault Files */}
-        <div className={`${panelClass} rounded-lg p-4`}>
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[#2a2d32] bg-[#101215]">
+        <div className={`${panelClass} rounded-[7px] p-4`}>
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.12)] shadow-[0_0_18px_rgba(45,212,191,0.14)]">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <rect x="3.5" y="2" width="9" height="13" rx="1.2" stroke="#2dd4bf" strokeWidth="1.2" />
                 <line x1="5.5" y1="6" x2="10.5" y2="6" stroke="#2dd4bf" strokeWidth="1" />
@@ -205,86 +206,94 @@ function MentorsView() {
                 <line x1="5.5" y1="11" x2="8.5" y2="11" stroke="#2dd4bf" strokeWidth="1" />
               </svg>
             </div>
-            <div>
-              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">Knowledge Vault Files</p>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Knowledge Vault Files</p>
               <p className="text-[22px] font-bold leading-none text-white">128</p>
-              <p className="mt-1 text-[10px] text-[#6b7280]">Encrypted &amp; stored</p>
+              <div className="mt-1 flex items-center justify-between gap-4">
+                <p className="shrink-0 text-[10px] text-[#707b89]">Encrypted &amp; stored</p>
+                <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
+                  <path d="M0,13 C12,13 18,7 28,7 C38,7 43,15 53,15 C63,15 68,5 78,5 C88,5 93,11 103,11 C111,11 116,7 120,7" stroke="#2dd4bf" strokeWidth="1.4" strokeOpacity="0.45" />
+                </svg>
+              </div>
             </div>
           </div>
-          <svg viewBox="0 0 120 18" className="h-[14px] w-full" fill="none">
-            <path d="M0,13 C12,13 18,7 28,7 C38,7 43,15 53,15 C63,15 68,5 78,5 C88,5 93,11 103,11 C111,11 116,7 120,7" stroke="#2dd4bf" strokeWidth="1.4" strokeOpacity="0.45" />
-          </svg>
         </div>
 
         {/* Avg Confidence */}
-        <div className={`${panelClass} rounded-lg p-4`}>
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[#2a2d32] bg-[#101215]">
+        <div className={`${panelClass} rounded-[7px] p-4`}>
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.12)] shadow-[0_0_18px_rgba(45,212,191,0.14)]">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M9 2.5C9 2.5 3 5 3 9.5C3 12.5 5.5 14.5 9 15.5C12.5 14.5 15 12.5 15 9.5C15 5 9 2.5 9 2.5Z" stroke="#2dd4bf" strokeWidth="1.2" fill="none" />
                 <path d="M6.5 9L8.2 10.8L11.5 7" stroke="#2dd4bf" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <div>
-              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">Avg Confidence</p>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Avg Confidence</p>
               <p className="text-[22px] font-bold leading-none text-white">91.6%</p>
-              <p className="mt-1 text-[10px] text-[#6b7280]">Preview confidence</p>
+              <div className="mt-1 flex items-center justify-between gap-4">
+                <p className="shrink-0 text-[10px] text-[#707b89]">Preview confidence</p>
+                <div className="h-[3px] w-[86px] shrink-0 rounded-full bg-[#1f2937]">
+                  <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,#22d3ee,#2dd4bf)]" style={{ width: "91.6%" }} />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="h-[3px] rounded-full bg-[#1f2937]">
-            <div className="h-[3px] rounded-full bg-[#2dd4bf]" style={{ width: "91.6%" }} />
           </div>
         </div>
 
         {/* Pending E-Sign */}
-        <div className={`${panelClass} rounded-lg p-4`}>
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[#2a2d32] bg-[#101215]">
+        <div className={`${panelClass} rounded-[7px] p-4`}>
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.12)] shadow-[0_0_18px_rgba(45,212,191,0.14)]">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M11.5 3L15 6.5L7 14.5L3.5 14.5L3.5 11L11.5 3Z" stroke="#2dd4bf" strokeWidth="1.2" fill="none" />
                 <path d="M9.5 5L13 8.5" stroke="#2dd4bf" strokeWidth="1" />
               </svg>
             </div>
-            <div>
-              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">Pending E-Sign</p>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Pending E-Sign</p>
               <p className="text-[22px] font-bold leading-none text-white">3</p>
-              <p className="mt-1 text-[10px] text-[#6b7280]">Attestations pending</p>
+              <div className="mt-1 flex items-center justify-between gap-4">
+                <p className="shrink-0 text-[10px] text-[#707b89]">Attestations pending</p>
+                <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
+                  <path d="M0,9 C15,9 20,15 30,15 C40,15 45,4 55,4 C65,4 70,12 80,12 C90,12 96,7 106,7 C111,7 115,9 120,9" stroke="#fbbf24" strokeWidth="1.4" strokeOpacity="0.45" />
+                </svg>
+              </div>
             </div>
           </div>
-          <svg viewBox="0 0 120 18" className="h-[14px] w-full" fill="none">
-            <path d="M0,9 C15,9 20,15 30,15 C40,15 45,4 55,4 C65,4 70,12 80,12 C90,12 96,7 106,7 C111,7 115,9 120,9" stroke="#fbbf24" strokeWidth="1.4" strokeOpacity="0.45" />
-          </svg>
         </div>
 
         {/* Active Drafts */}
-        <div className={`${panelClass} rounded-lg p-4`}>
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[#2a2d32] bg-[#101215]">
+        <div className={`${panelClass} rounded-[7px] p-4`}>
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.12)] shadow-[0_0_18px_rgba(45,212,191,0.14)]">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <rect x="3" y="12" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
                 <rect x="3" y="7.5" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
                 <rect x="3" y="3" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
               </svg>
             </div>
-            <div>
-              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">Active Drafts</p>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Active Drafts</p>
               <p className="text-[22px] font-bold leading-none text-white">5</p>
-              <p className="mt-1 text-[10px] text-[#6b7280]">In progress</p>
+              <div className="mt-1 flex items-center justify-between gap-4">
+                <p className="shrink-0 text-[10px] text-[#707b89]">In progress</p>
+                <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
+                  <path d="M0,11 C10,11 16,5 26,5 C36,5 41,13 51,13 C61,13 66,7 76,7 C86,7 91,13 101,13 C111,13 115,9 120,9" stroke="#2dd4bf" strokeWidth="1.4" strokeOpacity="0.45" />
+                </svg>
+              </div>
             </div>
           </div>
-          <svg viewBox="0 0 120 18" className="h-[14px] w-full" fill="none">
-            <path d="M0,11 C10,11 16,5 26,5 C36,5 41,13 51,13 C61,13 66,7 76,7 C86,7 91,13 101,13 C111,13 115,9 120,9" stroke="#2dd4bf" strokeWidth="1.4" strokeOpacity="0.45" />
-          </svg>
         </div>
       </div>
 
       {/* Main grid: packages left, mint+activity right */}
-      <div className="grid grid-cols-[1.45fr_1fr] gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.36fr_1fr]">
         {/* Left: Knowledge Packages */}
-        <div className={`${panelClass} rounded-lg p-4`}>
+        <div className={`${panelClass} rounded-[7px] p-4`}>
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-[#6b7280]">⬡</span>
+              <span className="text-[#8b95a3]">⬡</span>
               <h2 className="text-[13px] font-bold tracking-[0.05em] text-white">Mentor Knowledge Packages</h2>
             </div>
             <button className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] ${subtleButtonClass}`}>
@@ -292,13 +301,13 @@ function MentorsView() {
             </button>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.12)] bg-[rgba(3,8,10,0.36)]">
             {mentors.map((mentor) => (
-              <div key={mentor.name} className="rounded border border-[#242830] bg-[#101215] p-3">
-                <div className="flex gap-3">
+              <div key={mentor.name} className="border-b border-[rgba(96,165,250,0.13)] p-3 last:border-b-0">
+                <div className="grid gap-3 md:grid-cols-[72px_minmax(0,1fr)_270px]">
                   {/* Thumbnail */}
                   <div
-                    className="h-[78px] w-[52px] shrink-0 rounded border border-[#343840] bg-[#262a30] bg-cover bg-center"
+                    className="h-[78px] w-full shrink-0 rounded border border-[rgba(96,165,250,0.25)] bg-[#071014] bg-cover bg-center shadow-[0_0_18px_rgba(45,212,191,0.08)]"
                     style={{ backgroundImage: `url(${mentor.image})` }}
                   />
 
@@ -315,7 +324,7 @@ function MentorsView() {
                     <p className="mb-1 text-[10px] font-semibold" style={{ color: mentor.categoryColor }}>
                       {mentor.category}
                     </p>
-                    <p className="mb-2 line-clamp-2 text-[10px] leading-[1.5] text-[#6b7280]">
+                    <p className="mb-2 line-clamp-2 max-w-[390px] text-[10px] leading-[1.5] text-[#707b89]">
                       {mentor.description}
                     </p>
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -337,28 +346,28 @@ function MentorsView() {
                   </div>
 
                   {/* Right: stats + button + menu */}
-                  <div className="flex shrink-0 flex-col items-end justify-between">
-                    <div className="flex items-end gap-3">
+                  <div className="flex shrink-0 items-center justify-end gap-4">
+                    <div className="grid grid-cols-[44px_44px_92px] items-center gap-4">
                       <div className="text-center">
-                        <p className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#4b5563]">DOCS</p>
-                        <p className="text-sm font-bold text-white">{mentor.docs}</p>
+                        <p className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">DOCS</p>
+                        <p className="text-[18px] font-bold text-white">{mentor.docs}</p>
                       </div>
                       <div className="text-center">
-                        <p className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#4b5563]">GAPS</p>
-                        <p className="text-sm font-bold text-white">{mentor.gaps}</p>
+                        <p className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">GAPS</p>
+                        <p className="text-[18px] font-bold text-white">{mentor.gaps}</p>
                       </div>
                       <div className="w-[62px]">
-                        <p className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#4b5563]">CONFIDENCE</p>
-                        <p className="mb-1 text-sm font-bold text-white">{mentor.confidence}%</p>
+                        <p className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">CONFIDENCE</p>
+                        <p className="mb-1 text-[18px] font-bold text-white">{mentor.confidence}%</p>
                         <div className="h-[3px] rounded-full bg-[#1f2937]">
-                          <div className="h-[3px] rounded-full bg-[#2dd4bf]" style={{ width: `${mentor.confidence}%` }} />
+                          <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,#22d3ee,#2dd4bf)]" style={{ width: `${mentor.confidence}%` }} />
                         </div>
                       </div>
                     </div>
-                    <button className={`mt-2 whitespace-nowrap px-3 py-1.5 text-[9px] ${accentButtonClass}`}>
+                    <button className={`whitespace-nowrap px-3 py-1.5 text-[9px] ${accentButtonClass}`}>
                       OPEN STUDIO
                     </button>
-                    <span className="mt-1 cursor-pointer text-base text-[#4b5563] hover:text-[#6b7280]">⋮</span>
+                    <span className="cursor-pointer text-base text-[#586474] hover:text-[#8b95a3]">⋮</span>
                   </div>
                 </div>
               </div>
@@ -375,7 +384,7 @@ function MentorsView() {
         {/* Right column */}
         <div className="flex flex-col gap-4">
           {/* Mint New Mentor */}
-          <div className={`${panelClass} rounded-lg p-4`}>
+          <div className={`${panelClass} rounded-[7px] p-4`}>
             <div className="mb-1 flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="5.5" stroke="#6b7280" strokeWidth="1.1" />
@@ -393,8 +402,8 @@ function MentorsView() {
 
             <div className="mb-4">
               {mintSteps.map((step) => (
-                <div key={step.n} className="flex items-center gap-2.5 border-b border-[#1a1f25] py-2.5">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#2a2d32] bg-[#101215] text-[9px] font-bold text-[#6b7280]">
+                <div key={step.n} className="flex items-center gap-2.5 border-b border-[rgba(96,165,250,0.13)] py-2.5">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[rgba(45,212,191,0.45)] bg-[rgba(45,212,191,0.09)] text-[9px] font-bold text-[#2dd4bf]">
                     {step.n}
                   </div>
                   <span className="flex-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#4b5563]">
@@ -430,7 +439,7 @@ function MentorsView() {
           </div>
 
           {/* Recent Activity */}
-          <div className={`${panelClass} rounded-lg p-4`}>
+          <div className={`${panelClass} rounded-[7px] p-4`}>
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -624,22 +633,21 @@ export default function MentorWorkspaceMock({ kind }: MentorWorkspaceMockProps) 
   const copy = pageCopy[kind];
 
   return (
-    <>
-      <div className="mb-6 flex items-start justify-between">
+    <div className={kind === "mentors" ? "mentor-studio-reference" : ""}>
+      <div className="mb-4 flex items-start justify-between">
         <div>
           <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#2dd4bf]">{copy.eyebrow}</p>
-          <h1 className="mb-1.5 text-2xl font-bold text-white">{copy.title}</h1>
-          <p className="max-w-[600px] text-xs leading-[1.6] text-[#6b7280]">{copy.description}</p>
+          <h1 className="mb-2 text-2xl font-bold text-white">{copy.title}</h1>
+          <p className="max-w-[560px] text-xs leading-[1.65] text-[#8b95a3]">{copy.description}</p>
         </div>
         <button className={`shrink-0 px-3 py-1.5 text-[10px] ${subtleButtonClass}`}>MOCK DATA</button>
       </div>
-      <div className="mb-4 h-px w-full bg-[#1f2937]" />
 
       {kind === "mentors" && <MentorsView />}
       {kind === "shares" && <SharesView />}
       {kind === "gaps" && <GapsView />}
       {kind === "earnings" && <EarningsView />}
       {kind === "security" && <SecurityView />}
-    </>
+    </div>
   );
 }
