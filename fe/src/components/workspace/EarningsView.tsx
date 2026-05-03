@@ -23,9 +23,7 @@ export default function EarningsView() {
         {statCards.map(([icon, label, value, detail, trend]) => (
           <div key={label} className={`${panelClass} rounded-[7px] p-4`}>
             <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#2dd4bf]/35 bg-[#2dd4bf]/10 text-[22px] text-[#2dd4bf] shadow-[0_0_24px_rgba(45,212,191,0.16)]">
-                {icon}
-              </div>
+              <span className="mt-0.5 shrink-0 text-[56px] leading-none text-[#2dd4bf]">{icon}</span>
               <div className="min-w-0 flex-1">
                 <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">{label}</p>
                 <p className="text-[22px] font-bold leading-none text-white">{value}</p>
@@ -117,6 +115,32 @@ export default function EarningsView() {
             </div>
           </div>
           <p className="mt-5 text-[10px] text-[#707b89]">Distribution based on protocol rules and usage.</p>
+
+          <div className="mt-5 border-t border-[rgba(96,165,250,0.12)] pt-4">
+            <p className="mb-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">REVENUE SOURCES</p>
+            {(
+              [
+                ["#2dd4bf", "Subscription", "8,732 OG", "68%"],
+                ["#67e8f9", "Pay-per-query", "4,108 OG", "32%"],
+              ] as [string, string, string, string][]
+            ).map(([color, label, value, pct]) => (
+              <div key={label} className="mb-3 last:mb-0">
+                <div className="mb-1.5 flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                    <span className="text-[#d1d5db]">{label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#8b95a3]">{value}</span>
+                    <span className="w-7 text-right font-bold text-white">{pct}</span>
+                  </div>
+                </div>
+                <div className="h-[4px] rounded-full bg-[rgba(96,165,250,0.14)]">
+                  <div className="h-[4px] rounded-full" style={{ width: pct, backgroundColor: color }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className={`${panelClass} overflow-hidden rounded-[7px]`}>

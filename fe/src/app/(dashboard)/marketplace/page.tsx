@@ -174,7 +174,7 @@ export default function MarketplacePage() {
                   return (
                     <div
                       key={stat.label}
-                      className="flex min-h-[76px] items-center gap-3 rounded border border-[#25313a] bg-[#0d1114]/88 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                      className="flex min-h-[76px] items-center gap-3 rounded border border-[#25313a] bg-black px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                     >
                       <StatIcon className={`h-5 w-5 shrink-0 ${stat.tone}`} aria-hidden="true" />
                       <div className="min-w-0">
@@ -202,7 +202,7 @@ export default function MarketplacePage() {
                     className={`flex min-h-11 cursor-pointer items-center gap-2 rounded border px-5 py-2.5 font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
                       isActive
                         ? "border-[rgba(45,212,191,0.7)] bg-[rgba(45,212,191,0.1)] text-[#2dd4bf] shadow-[0_0_16px_rgba(45,212,191,0.1)]"
-                        : "border-[#1f2937] bg-[#0b0f12]/65 text-[#8b929d]"
+                        : "border-[#1f2937] bg-black text-[#8b929d]"
                     }`}
                   >
                     <FilterIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -290,7 +290,7 @@ export default function MarketplacePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg border border-[rgba(45,212,191,0.22)] bg-[linear-gradient(180deg,rgba(6,18,18,0.92),rgba(6,9,11,0.98))] px-4 py-3 shadow-[inset_0_1px_0_rgba(45,212,191,0.08),0_0_28px_rgba(45,212,191,0.07)]">
+            <div className="rounded-lg border border-[rgba(45,212,191,0.22)] bg-black px-4 py-3 shadow-[inset_0_1px_0_rgba(45,212,191,0.08),0_0_28px_rgba(45,212,191,0.07)]">
               <div className="mb-2.5 flex items-center justify-between gap-4 border-b border-[#1a2630] pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded border border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)]">
@@ -350,7 +350,7 @@ export default function MarketplacePage() {
               </button>
             </div>
 
-            <div className="rounded-lg border border-[#2a2d32] bg-[linear-gradient(180deg,rgba(13,16,19,0.98),rgba(8,11,13,0.96))] px-4 py-3 shadow-[0_0_28px_rgba(45,212,191,0.05)]">
+            <div className="rounded-lg border border-[#2a2d32] bg-black px-4 py-3 shadow-[0_0_28px_rgba(45,212,191,0.05)]">
               <div className="mb-2.5 flex items-center justify-between gap-4 border-b border-[#1f2937] pb-2.5">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-[#2dd4bf]" aria-hidden="true" />

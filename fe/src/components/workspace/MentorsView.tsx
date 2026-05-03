@@ -109,14 +109,12 @@ export default function MentorsView() {
         {/* Knowledge Vault Files */}
         <div className={`${panelClass} rounded-[7px] p-4`}>
           <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.12)] shadow-[0_0_18px_rgba(45,212,191,0.14)]">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <rect x="3.5" y="2" width="9" height="13" rx="1.2" stroke="#2dd4bf" strokeWidth="1.2" />
-                <line x1="5.5" y1="6" x2="10.5" y2="6" stroke="#2dd4bf" strokeWidth="1" />
-                <line x1="5.5" y1="8.5" x2="10.5" y2="8.5" stroke="#2dd4bf" strokeWidth="1" />
-                <line x1="5.5" y1="11" x2="8.5" y2="11" stroke="#2dd4bf" strokeWidth="1" />
-              </svg>
-            </div>
+            <svg width="44" height="44" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
+              <rect x="3.5" y="2" width="9" height="13" rx="1.2" stroke="#2dd4bf" strokeWidth="1.2" />
+              <line x1="5.5" y1="6" x2="10.5" y2="6" stroke="#2dd4bf" strokeWidth="1" />
+              <line x1="5.5" y1="8.5" x2="10.5" y2="8.5" stroke="#2dd4bf" strokeWidth="1" />
+              <line x1="5.5" y1="11" x2="8.5" y2="11" stroke="#2dd4bf" strokeWidth="1" />
+            </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Knowledge Vault Files</p>
               <p className="text-[22px] font-bold leading-none text-white">128</p>
@@ -133,12 +131,10 @@ export default function MentorsView() {
         {/* Avg Confidence */}
         <div className={`${panelClass} rounded-[7px] p-4`}>
           <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.12)] shadow-[0_0_18px_rgba(45,212,191,0.14)]">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M9 2.5C9 2.5 3 5 3 9.5C3 12.5 5.5 14.5 9 15.5C12.5 14.5 15 12.5 15 9.5C15 5 9 2.5 9 2.5Z" stroke="#2dd4bf" strokeWidth="1.2" fill="none" />
-                <path d="M6.5 9L8.2 10.8L11.5 7" stroke="#2dd4bf" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
+            <svg width="44" height="44" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
+              <path d="M9 2.5C9 2.5 3 5 3 9.5C3 12.5 5.5 14.5 9 15.5C12.5 14.5 15 12.5 15 9.5C15 5 9 2.5 9 2.5Z" stroke="#2dd4bf" strokeWidth="1.2" fill="none" />
+              <path d="M6.5 9L8.2 10.8L11.5 7" stroke="#2dd4bf" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Avg Confidence</p>
               <p className="text-[22px] font-bold leading-none text-white">91.6%</p>
@@ -155,12 +151,10 @@ export default function MentorsView() {
         {/* Pending E-Sign */}
         <div className={`${panelClass} rounded-[7px] p-4`}>
           <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.12)] shadow-[0_0_18px_rgba(45,212,191,0.14)]">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M11.5 3L15 6.5L7 14.5L3.5 14.5L3.5 11L11.5 3Z" stroke="#2dd4bf" strokeWidth="1.2" fill="none" />
-                <path d="M9.5 5L13 8.5" stroke="#2dd4bf" strokeWidth="1" />
-              </svg>
-            </div>
+            <svg width="44" height="44" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
+              <path d="M11.5 3L15 6.5L7 14.5L3.5 14.5L3.5 11L11.5 3Z" stroke="#2dd4bf" strokeWidth="1.2" fill="none" />
+              <path d="M9.5 5L13 8.5" stroke="#2dd4bf" strokeWidth="1" />
+            </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Pending E-Sign</p>
               <p className="text-[22px] font-bold leading-none text-white">3</p>
@@ -177,13 +171,11 @@ export default function MentorsView() {
         {/* Active Drafts */}
         <div className={`${panelClass} rounded-[7px] p-4`}>
           <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[7px] border border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.12)] shadow-[0_0_18px_rgba(45,212,191,0.14)]">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <rect x="3" y="12" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
-                <rect x="3" y="7.5" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
-                <rect x="3" y="3" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
-              </svg>
-            </div>
+            <svg width="44" height="44" viewBox="0 0 18 18" fill="none" className="mt-0.5 shrink-0">
+              <rect x="3" y="12" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
+              <rect x="3" y="7.5" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
+              <rect x="3" y="3" width="12" height="2.5" rx="1" stroke="#2dd4bf" strokeWidth="1.1" />
+            </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Active Drafts</p>
               <p className="text-[22px] font-bold leading-none text-white">5</p>

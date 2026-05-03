@@ -14,6 +14,8 @@ export default function MentorWorkspaceMock({ kind }: MentorWorkspaceMockProps) 
 
   return (
     <div className={kind === "mentors" ? "mentor-studio-reference" : ""}>
+⊞
+MARKETPLACE
       <div className="mb-4 flex items-start justify-between">
         <div>
           <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#2dd4bf]">{copy.eyebrow}</p>

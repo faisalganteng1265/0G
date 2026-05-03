@@ -36,17 +36,7 @@ export default function GapsView() {
         ].map(([icon, label, value, detail, extra, color]) => (
           <div key={label} className={`${panelClass} rounded-[7px] p-4`}>
             <div className="flex items-center gap-4">
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-[20px]"
-                style={{
-                  borderColor: `${color}55`,
-                  backgroundColor: `${color}14`,
-                  color,
-                  boxShadow: `0 0 22px ${color}22`,
-                }}
-              >
-                {icon}
-              </div>
+              <span className="shrink-0 text-[56px] leading-none" style={{ color }}>{icon}</span>
               <div className="min-w-0 flex-1">
                 <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">{label}</p>
                 <div className="flex items-end gap-4">

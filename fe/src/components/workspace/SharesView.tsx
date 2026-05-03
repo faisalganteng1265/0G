@@ -1,4 +1,4 @@
-import { subtleButtonClass, accentButtonClass } from "./shared";
+import { subtleButtonClass, accentButtonClass, solidAccentBtn } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
@@ -56,22 +56,22 @@ export default function SharesView() {
         {statCards.map((stat) => (
           <div key={stat.label} className={`${panelClass} rounded-[7px] p-4`}>
             <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[rgba(45,212,191,0.3)] bg-[rgba(45,212,191,0.1)] shadow-[0_0_18px_rgba(45,212,191,0.16)]">
+              <div className="mt-0.5 shrink-0">
                 {stat.icon === "stack" && (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <svg width="44" height="44" viewBox="0 0 20 20" fill="none">
                     <ellipse cx="10" cy="5" rx="6" ry="2.5" stroke={stat.stroke} strokeWidth="1.4" />
                     <path d="M4 5V10C4 11.4 6.7 12.5 10 12.5C13.3 12.5 16 11.4 16 10V5" stroke={stat.stroke} strokeWidth="1.4" />
                     <path d="M4 10V15C4 16.4 6.7 17.5 10 17.5C13.3 17.5 16 16.4 16 15V10" stroke={stat.stroke} strokeWidth="1.4" />
                   </svg>
                 )}
                 {stat.icon === "shield" && (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <svg width="44" height="44" viewBox="0 0 20 20" fill="none">
                     <path d="M10 2.5L16 5V9.5C16 13.2 13.6 16 10 17.5C6.4 16 4 13.2 4 9.5V5L10 2.5Z" stroke={stat.stroke} strokeWidth="1.4" />
                     <path d="M7.4 9.7L9.2 11.4L12.8 7.6" stroke={stat.stroke} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
                 {stat.icon === "users" && (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <svg width="44" height="44" viewBox="0 0 20 20" fill="none">
                     <circle cx="7.5" cy="7" r="2.5" stroke={stat.stroke} strokeWidth="1.4" />
                     <circle cx="13.5" cy="8" r="2" stroke={stat.stroke} strokeWidth="1.4" />
                     <path d="M3.5 16C4 13.5 5.5 12.2 7.5 12.2C9.5 12.2 11 13.5 11.5 16" stroke={stat.stroke} strokeWidth="1.4" strokeLinecap="round" />
@@ -79,7 +79,7 @@ export default function SharesView() {
                   </svg>
                 )}
                 {stat.icon === "percent" && (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <svg width="44" height="44" viewBox="0 0 20 20" fill="none">
                     <path d="M5 15L15 5" stroke={stat.stroke} strokeWidth="1.5" strokeLinecap="round" />
                     <circle cx="6.5" cy="6.5" r="2" stroke={stat.stroke} strokeWidth="1.3" />
                     <circle cx="13.5" cy="13.5" r="2" stroke={stat.stroke} strokeWidth="1.3" />
@@ -258,6 +258,65 @@ export default function SharesView() {
           <button className={`flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${accentButtonClass}`}>
             VIEW ALL ACTIVITY <span className="text-base leading-none">→</span>
           </button>
+        </div>
+      </div>
+
+      {/* Buy Shares */}
+      <div className="mt-4">
+        <div className={`${panelClass} rounded-[7px] p-4`}>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[#2dd4bf]">⊕</span>
+              <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Buy Shares</h2>
+              <span className="ml-1 rounded border border-[rgba(45,212,191,0.3)] bg-[rgba(45,212,191,0.08)] px-1.5 py-0.5 text-[9px] font-bold text-[#2dd4bf]">BONDING CURVE</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className={`${subtleButtonClass} px-3 py-1.5 text-[10px]`}>Sort: Trending ⌄</button>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.14)]">
+            <div className="grid grid-cols-[1.4fr_0.8fr_1fr_0.6fr_0.6fr_1fr] gap-3 bg-[rgba(255,255,255,0.025)] px-3 py-2 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">
+              <span>Mentor</span><span>Share Price</span><span>Shares Sold</span><span>Est. Yield</span><span>7D</span><span>Action</span>
+            </div>
+            {[
+              { name: "IndoRegulator_01", category: "Regulatory Playbook", price: "1,240 0G", soldPct: 72, sold: "720", total: "1000", yield: "14.2%", change: "+18.4%" },
+              { name: "QuantAlpha_7", category: "DeFi Strategy", price: "3,890 0G", soldPct: 54, sold: "540", total: "1000", yield: "11.8%", change: "+9.5%" },
+              { name: "CyberSec_V2", category: "Web3 Security", price: "8,105 0G", soldPct: 31, sold: "310", total: "1000", yield: "9.2%", change: "+4.1%" },
+              { name: "DeFiSage_01", category: "DeFi Analytics", price: "620 0G", soldPct: 18, sold: "180", total: "1000", yield: "7.8%", change: "+2.3%" },
+            ].map((row) => (
+              <div key={row.name} className="grid grid-cols-[1.4fr_0.8fr_1fr_0.6fr_0.6fr_1fr] items-center gap-3 border-t border-[rgba(96,165,250,0.12)] px-3 py-3 text-[11px]">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[rgba(45,212,191,0.3)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]">⬡</div>
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-white">{row.name}</p>
+                    <p className="text-[9px] text-[#707b89]">{row.category}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-bold text-white">{row.price}</p>
+                  <p className="text-[9px] text-[#707b89]">per share</p>
+                </div>
+                <div>
+                  <p className="mb-1 font-bold text-white">{row.sold} / {row.total}</p>
+                  <div className="h-[3px] w-full rounded-full bg-[rgba(96,165,250,0.14)]">
+                    <div className="h-[3px] rounded-full bg-[#2dd4bf]" style={{ width: `${row.soldPct}%` }} />
+                  </div>
+                </div>
+                <span className="font-bold text-[#2dd4bf]">{row.yield}</span>
+                <span className="font-bold text-[#2dd4bf]">{row.change}</span>
+                <div className="flex items-center justify-end gap-2">
+                  <button className={`px-3 py-1.5 text-[9px] ${solidAccentBtn}`}>BUY</button>
+                  <button className={`px-2 py-1.5 text-[9px] ${subtleButtonClass}`}>INFO</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between text-[10px] text-[#707b89]">
+            <span>Showing 4 of 12 available mentors</span>
+            <button className="font-semibold text-[#2dd4bf]">View all →</button>
+          </div>
         </div>
       </div>
     </div>

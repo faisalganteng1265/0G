@@ -33,12 +33,7 @@ export default function SecurityView() {
         ].map(([icon, label, value, trend, color]) => (
           <div key={label} className={`${panelClass} rounded-[7px] p-4`}>
             <div className="flex items-start gap-4">
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded border text-[18px]"
-                style={{ borderColor: `${color}55`, backgroundColor: `${color}14`, color }}
-              >
-                {icon}
-              </div>
+              <span className="mt-0.5 shrink-0 text-[56px] leading-none" style={{ color }}>{icon}</span>
               <div className="min-w-0 flex-1">
                 <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">{label}</p>
                 <p className="text-[24px] font-bold leading-none text-white">{value}</p>
