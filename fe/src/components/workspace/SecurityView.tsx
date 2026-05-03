@@ -1,4 +1,6 @@
-import { panelClass, subtleButtonClass } from "./shared";
+import { subtleButtonClass } from "./shared";
+
+const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function SecurityView() {
   const logs = [

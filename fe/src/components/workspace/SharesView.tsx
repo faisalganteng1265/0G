@@ -1,4 +1,6 @@
-import { panelClass, subtleButtonClass, accentButtonClass } from "./shared";
+import { subtleButtonClass, accentButtonClass } from "./shared";
+
+const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function SharesView() {
   const sharePositions = [

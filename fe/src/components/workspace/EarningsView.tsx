@@ -1,4 +1,6 @@
-import { panelClass, subtleButtonClass, solidAccentBtn } from "./shared";
+import { subtleButtonClass, solidAccentBtn } from "./shared";
+
+const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function EarningsView() {
   const statCards = [
