@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { updateConfidence, incrementGap, resolveGap, signTransferProof, signCloneProof } from "../lib/contracts";
+import { updateConfidence, incrementGap, resolveGap, buildTransferValidityProofs } from "../lib/contracts";
 import { getKnowledgeKeyBytes } from "../lib/storage";
 import { listServices } from "../lib/compute";
 
@@ -68,12 +68,12 @@ router.post("/gap/resolve", async (req: Request, res: Response) => {
 });
 
 // POST /oracle/sign-transfer
-// FE panggil ini sebelum SC transfer() untuk dapat sealedKey + proof dari oracle.
-// Body: { mentorId: string, tokenId: number, from: string, to: string }
+// FE panggil ini sebelum SC iTransfer() untuk dapat sealedKey + ERC-7857 proofs dari oracle.
+// Body: { mentorId: string, tokenId: number, from?: string, to: string }
 const SignTransferBody = z.object({
   mentorId: z.string().min(1),
   tokenId: z.coerce.number().int().nonnegative(),
-  from: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+  from: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
   to: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
 });
 
@@ -84,17 +84,17 @@ router.post("/sign-transfer", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const { mentorId, tokenId, from, to } = parsed.data;
+    const { mentorId, tokenId, to } = parsed.data;
     const sealedKey = getKnowledgeKeyBytes(mentorId);
-    const proof = await signTransferProof(from, to, tokenId, sealedKey);
-    res.json({ ok: true, sealedKey: "0x" + sealedKey.toString("hex"), proof });
+    const proofs = await buildTransferValidityProofs(to, tokenId, sealedKey);
+    res.json({ ok: true, sealedKey: "0x" + sealedKey.toString("hex"), proofs });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
 });
 
 // POST /oracle/sign-clone
-// FE panggil ini sebelum SC clone() untuk dapat sealedKey + proof dari oracle.
+// FE panggil ini sebelum SC iClone() untuk dapat sealedKey + ERC-7857 proofs dari oracle.
 // Body: { mentorId: string, tokenId: number, to: string }
 const SignCloneBody = z.object({
   mentorId: z.string().min(1),
@@ -111,8 +111,8 @@ router.post("/sign-clone", async (req: Request, res: Response) => {
   try {
     const { mentorId, tokenId, to } = parsed.data;
     const sealedKey = getKnowledgeKeyBytes(mentorId);
-    const proof = await signCloneProof(to, tokenId, sealedKey);
-    res.json({ ok: true, sealedKey: "0x" + sealedKey.toString("hex"), proof });
+    const proofs = await buildTransferValidityProofs(to, tokenId, sealedKey);
+    res.json({ ok: true, sealedKey: "0x" + sealedKey.toString("hex"), proofs });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

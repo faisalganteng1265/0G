@@ -98,32 +98,112 @@ export async function setSealedKey(tokenId: number, sealedKey: Uint8Array): Prom
   return tx.hash as string;
 }
 
-// Buat oracle signature untuk ERC-7857 transfer(from, to, tokenId, sealedKey).
-// FE pakai sealedKey + proof ini saat memanggil SC transfer().
-export async function signTransferProof(
-  from: string,
-  to: string,
-  tokenId: number,
-  sealedKey: Uint8Array
-): Promise<string> {
-  const signer = getOracleSigner();
-  const msgHash = ethers.keccak256(
-    ethers.solidityPacked(["address", "address", "uint256", "bytes"], [from, to, tokenId, sealedKey])
-  );
-  return signer.signMessage(ethers.getBytes(msgHash));
+type TransferValidityProof = {
+  accessProof: {
+    oldDataHash: string;
+    newDataHash: string;
+    nonce: string;
+    encryptedPubKey: string;
+    proof: string;
+  };
+  ownershipProof: {
+    oracleType: 0;
+    oldDataHash: string;
+    newDataHash: string;
+    sealedKey: string;
+    encryptedPubKey: string;
+    nonce: string;
+    proof: string;
+  };
+};
+
+function bytesHex(bytes: Uint8Array): string {
+  return ethers.hexlify(bytes);
 }
 
-// Buat oracle signature untuk ERC-7857 clone(to, tokenId, sealedKey).
-export async function signCloneProof(
+async function getCurrentDataHash(tokenId: number): Promise<string> {
+  const signer = getOracleSigner();
+  const contract = getInftContract(signer);
+  const mentor = await contract.mentors(tokenId);
+  return ethers.keccak256(ethers.toUtf8Bytes(mentor.storageRef));
+}
+
+function proofNonce(label: string, tokenId: number, to: string): string {
+  return ethers.hexlify(ethers.toUtf8Bytes(`${label}:${tokenId}:${to}:${Date.now()}:${ethers.hexlify(ethers.randomBytes(8))}`));
+}
+
+// Build ERC-7857 TransferValidityProof[] untuk iTransfer/iClone.
+// Proof ini mengikuti struktur EIP-7857; verifier on-chain menerima oracle TEE
+// sebagai access assistant untuk flow MVP tanpa receiver-side signature terpisah.
+export async function buildTransferValidityProofs(
   to: string,
   tokenId: number,
   sealedKey: Uint8Array
-): Promise<string> {
+): Promise<TransferValidityProof[]> {
   const signer = getOracleSigner();
-  const msgHash = ethers.keccak256(
-    ethers.solidityPacked(["address", "uint256", "bytes"], [to, tokenId, sealedKey])
+  const contractAddress = process.env.CONTRACT_INFT;
+  if (!contractAddress) throw new Error("CONTRACT_INFT not set");
+
+  const oldDataHash = await getCurrentDataHash(tokenId);
+  const newDataHash = oldDataHash;
+  const sealedKeyHex = bytesHex(sealedKey);
+  const encryptedPubKey = ethers.hexlify(ethers.concat([to]));
+  const accessNonce = proofNonce("access", tokenId, to);
+  const ownershipNonce = proofNonce("ownership", tokenId, to);
+  const coder = ethers.AbiCoder.defaultAbiCoder();
+
+  const accessHash = ethers.keccak256(
+    coder.encode(
+      ["address", "uint256", "bytes32", "bytes32", "bytes32", "bytes32"],
+      [
+        contractAddress,
+        (await signer.provider!.getNetwork()).chainId,
+        oldDataHash,
+        newDataHash,
+        ethers.keccak256(accessNonce),
+        ethers.keccak256(encryptedPubKey),
+      ]
+    )
   );
-  return signer.signMessage(ethers.getBytes(msgHash));
+  const accessSig = await signer.signMessage(ethers.getBytes(accessHash));
+
+  const ownershipHash = ethers.keccak256(
+    coder.encode(
+      ["address", "uint256", "uint8", "bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
+      [
+        contractAddress,
+        (await signer.provider!.getNetwork()).chainId,
+        0,
+        oldDataHash,
+        newDataHash,
+        ethers.keccak256(sealedKeyHex),
+        ethers.keccak256(encryptedPubKey),
+        ethers.keccak256(ownershipNonce),
+      ]
+    )
+  );
+  const ownershipSig = await signer.signMessage(ethers.getBytes(ownershipHash));
+
+  return [
+    {
+      accessProof: {
+        oldDataHash,
+        newDataHash,
+        nonce: accessNonce,
+        encryptedPubKey,
+        proof: accessSig,
+      },
+      ownershipProof: {
+        oracleType: 0,
+        oldDataHash,
+        newDataHash,
+        sealedKey: sealedKeyHex,
+        encryptedPubKey,
+        nonce: ownershipNonce,
+        proof: ownershipSig,
+      },
+    },
+  ];
 }
 
 // Oracle panggil ini setiap kali AI deteksi low-confidence answer
