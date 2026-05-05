@@ -72,6 +72,27 @@ contract MentorMarketplaceTest is Test {
         assertEq(m.storageRef, "0g://newref456");
     }
 
+    function test_OracleUpdateStorageRef() public {
+        vm.prank(oracle);
+        inft.updateStorageRef(mentorId, "0g://oracle-ref", 77);
+
+        AIMentorINFT.MentorMeta memory m = marketplace.getMentorInfo(mentorId);
+        assertEq(m.confidenceScore, 77);
+        assertEq(m.storageRef, "0g://oracle-ref");
+    }
+
+    function test_UpdateStorageRef_RevertIfNotOracle() public {
+        vm.prank(learner);
+        vm.expectRevert("not oracle");
+        inft.updateStorageRef(mentorId, "0g://bad-ref", 77);
+    }
+
+    function test_UpdateStorageRef_RevertIfScoreTooHigh() public {
+        vm.prank(oracle);
+        vm.expectRevert("score > 100");
+        inft.updateStorageRef(mentorId, "0g://bad-score", 101);
+    }
+
     function test_SetMentorStatus_READY() public {
         vm.startPrank(mentor);
         marketplace.setMentorStatus(mentorId, AIMentorINFT.Status.REVIEW);

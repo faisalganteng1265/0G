@@ -44,7 +44,7 @@ contract AIMentorINFT is ERC721, Ownable {
 
     constructor() ERC721("AI Mentor INFT", "AIMT") Ownable(msg.sender) {}
 
-    // ─── Owner-only mutations (called by MentorMarketplace) ──────────────────
+    // ─── Owner mutations (called by MentorMarketplace) ───────────────────────
 
     function mintMentor(
         address to,
@@ -74,8 +74,9 @@ contract AIMentorINFT is ERC721, Ownable {
 
     function updateStorageRef(uint256 tokenId, string calldata newRef, uint8 newConfidence)
         external
-        onlyOwner
+        onlyOracle
     {
+        require(newConfidence <= 100, "score > 100");
         MentorMeta storage m = _mentors[tokenId];
         m.storageRef = newRef;
         m.confidenceScore = newConfidence;

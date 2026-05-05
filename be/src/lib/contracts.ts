@@ -1,0 +1,374 @@
+import { ethers } from "ethers";
+
+const RPC_URL =
+  process.env.ZG_RPC_URL ?? "https://evmrpc-testnet.0g.ai";
+
+// Minimal ABI — hanya fungsi yang dipakai backend oracle
+const INFT_ABI = [
+  "function updateStorageRef(uint256 tokenId, string calldata newRef, uint8 newConfidence) external",
+  "function incrementGapCount(uint256 tokenId) external",
+  "function resolveGap(uint256 tokenId) external",
+  "function updateConfidence(uint256 tokenId, uint8 score) external",
+  "function recordQuery(uint256 tokenId) external",
+  "function mentors(uint256 tokenId) external view returns (address creator, string storageRef, string name, string category, uint8 confidenceScore, uint32 gapCount, uint32 totalQueries, uint8 status, uint64 lastUpdatedAt, uint64 mintedAt)",
+  "function setOracle(address oracle, bool enabled) external",
+];
+
+const MARKETPLACE_ABI = [
+  "event QueryExecuted(uint256 indexed mentorId, address indexed querier)",
+  "function buyShares(uint256 mentorId, uint32 amount) external payable",
+  "function executeQuery(uint256 mentorId) external payable",
+  "function getShareBalance(uint256 mentorId, address holder) external view returns (uint32)",
+  "function getSharePrice(uint256 mentorId) external view returns (uint256)",
+  "function isSubscribed(uint256 mentorId, address user) external view returns (bool)",
+  "function subscribe(uint256 mentorId) external payable",
+];
+
+const ACCESS_SHARES_ABI = [
+  "function buyQuote(uint256 mentorId, uint32 amount) external view returns (uint256)",
+  "function balanceOf(uint256 mentorId, address holder) external view returns (uint32)",
+  "function currentPrice(uint256 mentorId) external view returns (uint256)",
+];
+
+const REVENUE_ABI = [
+  "function QUERY_PRICE() external view returns (uint256)",
+  "function SUBSCRIPTION_PRICE() external view returns (uint256)",
+  "function isSubscribed(uint256 mentorId, address user) external view returns (bool)",
+];
+
+const marketplaceInterface = new ethers.Interface(MARKETPLACE_ABI);
+
+function getProvider() {
+  return new ethers.JsonRpcProvider(RPC_URL);
+}
+
+function getOracleSigner() {
+  if (!process.env.ORACLE_PRIVATE_KEY)
+    throw new Error("ORACLE_PRIVATE_KEY not set");
+  const provider = getProvider();
+  return new ethers.Wallet(process.env.ORACLE_PRIVATE_KEY, provider);
+}
+
+function getInftContract(signer: ethers.Wallet) {
+  const addr = process.env.CONTRACT_INFT;
+  if (!addr) throw new Error("CONTRACT_INFT not set");
+  return new ethers.Contract(addr, INFT_ABI, signer);
+}
+
+function getMarketplaceContract(signerOrProvider: ethers.Signer | ethers.Provider) {
+  const addr = process.env.CONTRACT_MARKETPLACE;
+  if (!addr) throw new Error("CONTRACT_MARKETPLACE not set");
+  return new ethers.Contract(addr, MARKETPLACE_ABI, signerOrProvider);
+}
+
+function getAccessSharesContract(provider: ethers.Provider) {
+  const addr = process.env.CONTRACT_ACCESS_SHARES;
+  if (!addr) throw new Error("CONTRACT_ACCESS_SHARES not set");
+  return new ethers.Contract(addr, ACCESS_SHARES_ABI, provider);
+}
+
+function getRevenueContract(provider: ethers.Provider) {
+  const addr = process.env.CONTRACT_REVENUE;
+  if (!addr) throw new Error("CONTRACT_REVENUE not set");
+  return new ethers.Contract(addr, REVENUE_ABI, provider);
+}
+
+// Setelah knowledge berhasil diupload ke 0G Storage, simpan rootHash on-chain
+export async function updateStorageRef(
+  tokenId: number,
+  rootHash: string,
+  confidence: number
+): Promise<string> {
+  const signer = getOracleSigner();
+  const contract = getInftContract(signer);
+  const tx = await contract.updateStorageRef(tokenId, rootHash, confidence);
+  await tx.wait();
+  console.log(`[contracts] updateStorageRef tokenId=${tokenId} hash=${rootHash} tx=${tx.hash}`);
+  return tx.hash as string;
+}
+
+// Oracle panggil ini setiap kali AI deteksi low-confidence answer
+export async function incrementGap(tokenId: number): Promise<string> {
+  const signer = getOracleSigner();
+  const contract = getInftContract(signer);
+  const tx = await contract.incrementGapCount(tokenId);
+  await tx.wait();
+  return tx.hash as string;
+}
+
+export async function resolveGap(tokenId: number): Promise<string> {
+  const signer = getOracleSigner();
+  const contract = getInftContract(signer);
+  const tx = await contract.resolveGap(tokenId);
+  await tx.wait();
+  return tx.hash as string;
+}
+
+// Update confidence score on-chain (0-100)
+export async function updateConfidence(
+  tokenId: number,
+  score: number
+): Promise<string> {
+  const signer = getOracleSigner();
+  const contract = getInftContract(signer);
+  const tx = await contract.updateConfidence(tokenId, score);
+  await tx.wait();
+  return tx.hash as string;
+}
+
+// Catat query yang masuk ke log on-chain
+export async function recordQuery(tokenId: number): Promise<void> {
+  const signer = getOracleSigner();
+  const contract = getInftContract(signer);
+  const tx = await contract.recordQuery(tokenId);
+  await tx.wait();
+}
+
+export type QueryAccess = {
+  checked: boolean;
+  hasAccess: boolean;
+  reason: "contracts-not-configured" | "subscribed" | "shareholder" | "no-access";
+  shareBalance: number;
+  subscribed: boolean;
+};
+
+// Query access is granted by either an active subscription or any access shares.
+export async function checkQueryAccess(
+  tokenId: number,
+  userAddress?: string
+): Promise<QueryAccess> {
+  const hasMarketplace = Boolean(process.env.CONTRACT_MARKETPLACE);
+  const hasSplitContracts = Boolean(process.env.CONTRACT_ACCESS_SHARES && process.env.CONTRACT_REVENUE);
+
+  if (!hasMarketplace && !hasSplitContracts) {
+    return {
+      checked: false,
+      hasAccess: true,
+      reason: "contracts-not-configured",
+      shareBalance: 0,
+      subscribed: false,
+    };
+  }
+
+  if (!userAddress || !ethers.isAddress(userAddress)) {
+    return {
+      checked: true,
+      hasAccess: false,
+      reason: "no-access",
+      shareBalance: 0,
+      subscribed: false,
+    };
+  }
+
+  const provider = getProvider();
+  let shareBalance = 0;
+  let subscribed = false;
+
+  if (hasMarketplace) {
+    const marketplace = getMarketplaceContract(provider);
+    const [shares, isSubscribed] = await Promise.all([
+      marketplace.getShareBalance(tokenId, userAddress),
+      marketplace.isSubscribed(tokenId, userAddress),
+    ]);
+    shareBalance = Number(shares);
+    subscribed = Boolean(isSubscribed);
+  } else {
+    const shares = getAccessSharesContract(provider);
+    const revenue = getRevenueContract(provider);
+    const [balance, isSubscribed] = await Promise.all([
+      shares.balanceOf(tokenId, userAddress),
+      revenue.isSubscribed(tokenId, userAddress),
+    ]);
+    shareBalance = Number(balance);
+    subscribed = Boolean(isSubscribed);
+  }
+
+  return {
+    checked: true,
+    hasAccess: subscribed || shareBalance > 0,
+    reason: subscribed ? "subscribed" : shareBalance > 0 ? "shareholder" : "no-access",
+    shareBalance,
+    subscribed,
+  };
+}
+
+export async function getMarketAccess(tokenId: number, userAddress: string) {
+  return checkQueryAccess(tokenId, userAddress);
+}
+
+export async function getMarketQuote(tokenId: number, amount: number) {
+  const provider = getProvider();
+  const hasMarketplace = Boolean(process.env.CONTRACT_MARKETPLACE);
+  const hasShares = Boolean(process.env.CONTRACT_ACCESS_SHARES);
+  const hasRevenue = Boolean(process.env.CONTRACT_REVENUE);
+
+  let sharePrice: bigint | null = null;
+  let buySharesCost: bigint | null = null;
+  let subscriptionPrice = ethers.parseEther(process.env.SUBSCRIPTION_PRICE_OG ?? "0.05");
+  let queryPrice = ethers.parseEther(process.env.QUERY_PRICE_OG ?? "0.0005");
+
+  if (hasMarketplace) {
+    const marketplace = getMarketplaceContract(provider);
+    sharePrice = await marketplace.getSharePrice(tokenId);
+  } else if (hasShares) {
+    const shares = getAccessSharesContract(provider);
+    sharePrice = await shares.currentPrice(tokenId);
+  }
+
+  if (hasShares) {
+    const shares = getAccessSharesContract(provider);
+    buySharesCost = await shares.buyQuote(tokenId, amount);
+  }
+
+  if (hasRevenue) {
+    const revenue = getRevenueContract(provider);
+    const [subPrice, qPrice] = await Promise.all([
+      revenue.SUBSCRIPTION_PRICE(),
+      revenue.QUERY_PRICE(),
+    ]);
+    subscriptionPrice = subPrice;
+    queryPrice = qPrice;
+  }
+
+  return {
+    tokenId,
+    amount,
+    sharePriceWei: sharePrice?.toString() ?? null,
+    buySharesCostWei: buySharesCost?.toString() ?? null,
+    subscriptionPriceWei: subscriptionPrice.toString(),
+    queryPriceWei: queryPrice.toString(),
+  };
+}
+
+export function buildSubscribeTx(tokenId: number, valueWei: string) {
+  if (!process.env.CONTRACT_MARKETPLACE) throw new Error("CONTRACT_MARKETPLACE not set");
+  return {
+    to: process.env.CONTRACT_MARKETPLACE,
+    value: valueWei,
+    data: marketplaceInterface.encodeFunctionData("subscribe", [tokenId]),
+  };
+}
+
+export function buildBuySharesTx(tokenId: number, amount: number, valueWei: string) {
+  if (!process.env.CONTRACT_MARKETPLACE) throw new Error("CONTRACT_MARKETPLACE not set");
+  return {
+    to: process.env.CONTRACT_MARKETPLACE,
+    value: valueWei,
+    data: marketplaceInterface.encodeFunctionData("buyShares", [tokenId, amount]),
+  };
+}
+
+export function buildExecuteQueryTx(tokenId: number, valueWei: string) {
+  if (!process.env.CONTRACT_MARKETPLACE) throw new Error("CONTRACT_MARKETPLACE not set");
+  return {
+    to: process.env.CONTRACT_MARKETPLACE,
+    value: valueWei,
+    data: marketplaceInterface.encodeFunctionData("executeQuery", [tokenId]),
+  };
+}
+
+export async function verifyQuerySettlement(
+  tokenId: number,
+  userAddress: string,
+  txHash: string
+) {
+  if (!process.env.CONTRACT_MARKETPLACE) {
+    return { ok: false, error: "CONTRACT_MARKETPLACE not set" };
+  }
+
+  if (!ethers.isAddress(userAddress)) {
+    return { ok: false, error: "Invalid userAddress" };
+  }
+
+  const provider = getProvider();
+  const tx = await provider.getTransaction(txHash);
+  if (!tx) return { ok: false, error: "Settlement transaction not found" };
+
+  const marketplaceAddress = ethers.getAddress(process.env.CONTRACT_MARKETPLACE);
+  if (!tx.to || ethers.getAddress(tx.to) !== marketplaceAddress) {
+    return { ok: false, error: "Settlement transaction target is not the marketplace" };
+  }
+
+  if (ethers.getAddress(tx.from) !== ethers.getAddress(userAddress)) {
+    return { ok: false, error: "Settlement transaction sender does not match userAddress" };
+  }
+
+  try {
+    const parsed = marketplaceInterface.parseTransaction({ data: tx.data, value: tx.value });
+    if (!parsed || parsed.name !== "executeQuery" || Number(parsed.args[0]) !== tokenId) {
+      return { ok: false, error: "Settlement transaction is not executeQuery(tokenId)" };
+    }
+  } catch {
+    return { ok: false, error: "Unable to decode settlement transaction" };
+  }
+
+  const receipt = await provider.getTransactionReceipt(txHash);
+  if (!receipt) return { ok: false, error: "Settlement transaction is not confirmed yet" };
+  if (receipt.status !== 1) return { ok: false, error: "Settlement transaction reverted" };
+
+  for (const log of receipt.logs) {
+    if (ethers.getAddress(log.address) !== marketplaceAddress) continue;
+
+    try {
+      const parsedLog = marketplaceInterface.parseLog(log);
+      if (
+        parsedLog?.name === "QueryExecuted" &&
+        Number(parsedLog.args.mentorId) === tokenId &&
+        ethers.getAddress(parsedLog.args.querier) === ethers.getAddress(userAddress)
+      ) {
+        return {
+          ok: true,
+          txHash,
+          blockNumber: receipt.blockNumber,
+          valueWei: tx.value.toString(),
+        };
+      }
+    } catch {
+      // Ignore unrelated marketplace logs.
+    }
+  }
+
+  return { ok: false, error: "QueryExecuted event not found in settlement transaction" };
+}
+
+// Trigger the marketplace pay-per-query path so mentor/curator/platform revenue
+// is distributed on-chain after a successful backend inference.
+export async function triggerQueryRevenue(tokenId: number): Promise<string | null> {
+  if (!process.env.CONTRACT_MARKETPLACE) return null;
+
+  const signer = getOracleSigner();
+  const marketplace = getMarketplaceContract(signer);
+  const provider = getProvider();
+
+  let queryPrice = ethers.parseEther(process.env.QUERY_PRICE_OG ?? "0.0005");
+  if (process.env.CONTRACT_REVENUE) {
+    const revenue = getRevenueContract(provider);
+    queryPrice = await revenue.QUERY_PRICE();
+  }
+
+  const tx = await marketplace.executeQuery(tokenId, { value: queryPrice });
+  await tx.wait();
+  console.log(`[contracts] executeQuery tokenId=${tokenId} value=${queryPrice.toString()} tx=${tx.hash}`);
+  return tx.hash as string;
+}
+
+// Baca metadata mentor dari on-chain
+export async function getMentorMeta(tokenId: number) {
+  const provider = getProvider();
+  const addr = process.env.CONTRACT_INFT;
+  if (!addr) throw new Error("CONTRACT_INFT not set");
+  const contract = new ethers.Contract(addr, INFT_ABI, provider);
+  const m = await contract.mentors(tokenId);
+  return {
+    creator: m.creator as string,
+    storageRef: m.storageRef as string,
+    name: m.name as string,
+    category: m.category as string,
+    confidenceScore: Number(m.confidenceScore),
+    gapCount: Number(m.gapCount),
+    totalQueries: Number(m.totalQueries),
+    status: Number(m.status),
+    lastUpdatedAt: Number(m.lastUpdatedAt),
+    mintedAt: Number(m.mintedAt),
+  };
+}
