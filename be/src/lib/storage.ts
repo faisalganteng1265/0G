@@ -27,6 +27,12 @@ function deriveKey(mentorId: string): Buffer {
     .digest();
 }
 
+// Returns the raw AES key bytes for a mentor — used by oracle to set sealedKey on-chain.
+// Note: demo-grade. Production should ECIES-encrypt this for the owner's public key.
+export function getKnowledgeKeyBytes(mentorId: string): Buffer {
+  return deriveKey(mentorId);
+}
+
 function encrypt(plaintext: string, mentorId: string): Buffer {
   const key = deriveKey(mentorId);
   const iv = crypto.randomBytes(12);

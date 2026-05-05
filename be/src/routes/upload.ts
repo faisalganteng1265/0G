@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
 import { z } from "zod";
-import { uploadKnowledge } from "../lib/storage";
-import { updateStorageRef } from "../lib/contracts";
+import { uploadKnowledge, getKnowledgeKeyBytes } from "../lib/storage";
+import { updateStorageRef, setSealedKey } from "../lib/contracts";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -44,6 +44,8 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
     let txHash: string | null = null;
     if (process.env.CONTRACT_INFT) {
       txHash = await updateStorageRef(tokenId, rootHash, 50);
+      // 3. Simpan sealedKey on-chain (AES key untuk owner saat ini)
+      await setSealedKey(tokenId, getKnowledgeKeyBytes(mentorId));
     }
 
     res.json({

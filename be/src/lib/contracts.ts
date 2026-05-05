@@ -6,6 +6,7 @@ const RPC_URL =
 // Minimal ABI — hanya fungsi yang dipakai backend oracle
 const INFT_ABI = [
   "function updateStorageRef(uint256 tokenId, string calldata newRef, uint8 newConfidence) external",
+  "function setSealedKey(uint256 tokenId, bytes calldata sealedKey) external",
   "function incrementGapCount(uint256 tokenId) external",
   "function resolveGap(uint256 tokenId) external",
   "function updateConfidence(uint256 tokenId, uint8 score) external",
@@ -85,6 +86,44 @@ export async function updateStorageRef(
   await tx.wait();
   console.log(`[contracts] updateStorageRef tokenId=${tokenId} hash=${rootHash} tx=${tx.hash}`);
   return tx.hash as string;
+}
+
+// Simpan sealedKey (AES key untuk owner saat ini) on-chain setelah upload knowledge.
+export async function setSealedKey(tokenId: number, sealedKey: Uint8Array): Promise<string> {
+  const signer = getOracleSigner();
+  const contract = getInftContract(signer);
+  const tx = await contract.setSealedKey(tokenId, sealedKey);
+  await tx.wait();
+  console.log(`[contracts] setSealedKey tokenId=${tokenId} tx=${tx.hash}`);
+  return tx.hash as string;
+}
+
+// Buat oracle signature untuk ERC-7857 transfer(from, to, tokenId, sealedKey).
+// FE pakai sealedKey + proof ini saat memanggil SC transfer().
+export async function signTransferProof(
+  from: string,
+  to: string,
+  tokenId: number,
+  sealedKey: Uint8Array
+): Promise<string> {
+  const signer = getOracleSigner();
+  const msgHash = ethers.keccak256(
+    ethers.solidityPacked(["address", "address", "uint256", "bytes"], [from, to, tokenId, sealedKey])
+  );
+  return signer.signMessage(ethers.getBytes(msgHash));
+}
+
+// Buat oracle signature untuk ERC-7857 clone(to, tokenId, sealedKey).
+export async function signCloneProof(
+  to: string,
+  tokenId: number,
+  sealedKey: Uint8Array
+): Promise<string> {
+  const signer = getOracleSigner();
+  const msgHash = ethers.keccak256(
+    ethers.solidityPacked(["address", "uint256", "bytes"], [to, tokenId, sealedKey])
+  );
+  return signer.signMessage(ethers.getBytes(msgHash));
 }
 
 // Oracle panggil ini setiap kali AI deteksi low-confidence answer
