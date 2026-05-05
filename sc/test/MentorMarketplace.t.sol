@@ -21,6 +21,8 @@ contract MentorMarketplaceTest is Test {
     address learner  = makeAddr("learner");
     address oracle   = makeAddr("oracle");
     address platform = makeAddr("platform");
+    uint256 proofOraclePk = 0xA11CE;
+    address proofOracle;
 
     uint256 mentorId;
 
@@ -29,6 +31,8 @@ contract MentorMarketplaceTest is Test {
     uint256 Q_PRICE;
 
     function setUp() public {
+        proofOracle = vm.addr(proofOraclePk);
+
         inft        = new AIMentorINFT();
         shares      = new AccessSharesMarket();
         rev         = new RevenueDistributor(address(shares));
@@ -41,6 +45,7 @@ contract MentorMarketplaceTest is Test {
         vest.transferOwnership(address(marketplace));
 
         marketplace.setOracle(oracle, true);
+        marketplace.setOracle(proofOracle, true);
 
         SUB_PRICE = rev.SUBSCRIPTION_PRICE();
         Q_PRICE   = rev.QUERY_PRICE();
@@ -52,6 +57,34 @@ contract MentorMarketplaceTest is Test {
 
         vm.prank(mentor);
         mentorId = marketplace.registerMentor("IndoRegulator_01", "Regulatory Playbook", "0g://abc123");
+    }
+
+    function _packSignature(uint8 v, bytes32 r, bytes32 s) internal pure returns (bytes memory) {
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _ethSignedHash(bytes32 msgHash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", msgHash));
+    }
+
+    function _transferProof(address from, address to, uint256 tokenId, bytes memory sealedKey)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 msgHash = keccak256(abi.encodePacked(from, to, tokenId, sealedKey));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(proofOraclePk, _ethSignedHash(msgHash));
+        return _packSignature(v, r, s);
+    }
+
+    function _cloneProof(address to, uint256 tokenId, bytes memory sealedKey)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 msgHash = keccak256(abi.encodePacked(to, tokenId, sealedKey));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(proofOraclePk, _ethSignedHash(msgHash));
+        return _packSignature(v, r, s);
     }
 
     // --- Minting ---
@@ -91,6 +124,83 @@ contract MentorMarketplaceTest is Test {
         vm.prank(oracle);
         vm.expectRevert("score > 100");
         inft.updateStorageRef(mentorId, "0g://bad-score", 101);
+    }
+
+    // --- ERC-7857 ---
+
+    function test_ERC7857_SetSealedKey() public {
+        bytes memory sealedKey = hex"010203";
+
+        vm.prank(oracle);
+        inft.setSealedKey(mentorId, sealedKey);
+
+        assertEq(inft.sealedKeyOf(mentorId), sealedKey);
+    }
+
+    function test_ERC7857_TransferWithOracleProof() public {
+        bytes memory sealedKey = hex"aabbcc";
+        bytes memory proof = _transferProof(mentor, learner, mentorId, sealedKey);
+
+        vm.prank(mentor);
+        inft.transfer(mentor, learner, mentorId, sealedKey, proof);
+
+        assertEq(inft.ownerOf(mentorId), learner);
+        assertEq(inft.sealedKeyOf(mentorId), sealedKey);
+    }
+
+    function test_ERC7857_TransferRevertsIfCallerNotAuthorized() public {
+        bytes memory sealedKey = hex"aabbcc";
+        bytes memory proof = _transferProof(mentor, learner, mentorId, sealedKey);
+
+        vm.prank(curator1);
+        vm.expectRevert("not owner or approved");
+        inft.transfer(mentor, learner, mentorId, sealedKey, proof);
+    }
+
+    function test_ERC7857_TransferRevertsIfProofInvalid() public {
+        bytes memory sealedKey = hex"aabbcc";
+        bytes memory badProof = _transferProof(mentor, curator1, mentorId, sealedKey);
+
+        vm.prank(mentor);
+        vm.expectRevert("invalid oracle proof");
+        inft.transfer(mentor, learner, mentorId, sealedKey, badProof);
+    }
+
+    function test_ERC7857_CloneWithOracleProof() public {
+        bytes memory sealedKey = hex"c0ffee";
+        bytes memory proof = _cloneProof(learner, mentorId, sealedKey);
+
+        vm.prank(mentor);
+        uint256 cloneId = inft.clone(learner, mentorId, sealedKey, proof);
+
+        assertEq(inft.ownerOf(cloneId), learner);
+        assertEq(inft.sealedKeyOf(cloneId), sealedKey);
+
+        AIMentorINFT.MentorMeta memory original = marketplace.getMentorInfo(mentorId);
+        AIMentorINFT.MentorMeta memory cloned = marketplace.getMentorInfo(cloneId);
+        assertEq(cloned.storageRef, original.storageRef);
+        assertEq(cloned.name, original.name);
+    }
+
+    function test_ERC7857_CloneRevertsIfCallerNotAuthorized() public {
+        bytes memory sealedKey = hex"c0ffee";
+        bytes memory proof = _cloneProof(learner, mentorId, sealedKey);
+
+        vm.prank(curator1);
+        vm.expectRevert("not owner or approved");
+        inft.clone(learner, mentorId, sealedKey, proof);
+    }
+
+    function test_ERC7857_AuthorizeUsage() public {
+        bytes memory permissions = abi.encode(uint64(block.timestamp + 1 days), uint32(100));
+
+        vm.prank(mentor);
+        inft.authorizeUsage(mentorId, learner, permissions);
+
+        address[] memory users = inft.authorizedUsersOf(mentorId);
+        assertEq(users.length, 1);
+        assertEq(users[0], learner);
+        assertEq(inft.permissionsOf(mentorId, learner), permissions);
     }
 
     function test_SetMentorStatus_READY() public {
