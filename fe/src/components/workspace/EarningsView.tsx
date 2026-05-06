@@ -1,21 +1,55 @@
+"use client";
+
+import { useAccount, useWriteContract } from "wagmi";
+
+import { formatOg, useMentorClaimable, useMentors, useVestingProgress } from "@/hooks/useMarketplace";
+import { MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
+
 import { subtleButtonClass, solidAccentBtn } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function EarningsView() {
+  const { address } = useAccount();
+  const { data: mentors = [] } = useMentors();
+  const { writeContractAsync } = useWriteContract();
+  const myMentors = address ? mentors.filter((mentor) => mentor.creator.toLowerCase() === address.toLowerCase()) : [];
   const statCards = [
-    ["◎", "Gross Revenue", "12,840 OG", "Subscription + pay-per-query", "▲ 12.4% vs last 30 days"],
+    ["◎", "Gross Revenue", "12,840 OG", "Share access + pay-per-query", "▲ 12.4% vs last 30 days"],
     ["♕", "Mentor Royalty", "7,704 OG", "Lifetime royalty share", "▲ 9.8% vs last 30 days"],
     ["♣", "Curator Pool", "3,210 OG", "Pro-rata usage rewards", "▲ 7.2% vs last 30 days"],
     ["▱", "Platform Fee", "1,926 OG", "Operational fee allocation", "▲ 5.4% vs last 30 days"],
   ];
 
-  const vestingRows = [
+  const fallbackVestingRows = [
     ["IndoRegulator_01", "Regulatory Watchdog", "18 days", "Jun 18, 2026", "2,910 OG", "65%"],
     ["ExportOps_APAC", "APAC Trade Intelligence", "24 days", "Jun 24, 2026", "1,108 OG", "42%"],
     ["DeFiTax_Advisor", "Defi Tax Optimizer", "7 days", "Jun 7, 2026", "842 OG", "83%"],
     ["AuditGuardian_Pro", "Onchain Audit Monitor", "36 days", "Jul 6, 2026", "654 OG", "28%"],
   ];
+  const vestingRows =
+    myMentors.length > 0
+      ? myMentors.map((mentor) => [
+          mentor.name,
+          mentor.category,
+          "30 days",
+          mentor.lastUpdatedAt ? new Date((mentor.lastUpdatedAt + 30 * 24 * 60 * 60) * 1000).toLocaleDateString() : "-",
+          "On-chain",
+          "0%",
+          String(mentor.tokenId),
+        ])
+      : fallbackVestingRows;
+
+  async function claimFirstRoyalty() {
+    const tokenId = myMentors[0]?.tokenId;
+    if (tokenId === undefined) return;
+    await writeContractAsync({
+      address: MARKETPLACE_ADDRESS,
+      abi: marketplaceAbi,
+      functionName: "claimMentorRoyalty",
+      args: [BigInt(tokenId)],
+    });
+  }
 
   return (
     <div className="earnings-reference">
@@ -120,7 +154,7 @@ export default function EarningsView() {
             <p className="mb-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">REVENUE SOURCES</p>
             {(
               [
-                ["#2dd4bf", "Subscription", "8,732 OG", "68%"],
+                ["#2dd4bf", "Share access", "8,732 OG", "68%"],
                 ["#67e8f9", "Pay-per-query", "4,108 OG", "32%"],
               ] as [string, string, string, string][]
             ).map(([color, label, value, pct]) => (
@@ -154,7 +188,7 @@ export default function EarningsView() {
           </div>
           <div className="p-4">
             <p className="mb-5 text-center text-[11px] leading-[1.6] text-[#8b95a3]">Includes vested allocations ready for withdrawal.</p>
-            <button className={`flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${solidAccentBtn}`}>CLAIM REWARDS <span className="text-base leading-none">›</span></button>
+            <button className={`flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${solidAccentBtn}`} disabled={myMentors.length === 0} onClick={claimFirstRoyalty} type="button">CLAIM REWARDS <span className="text-base leading-none">›</span></button>
           </div>
         </div>
       </div>
@@ -168,28 +202,8 @@ export default function EarningsView() {
           <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] gap-3 border-b border-[rgba(96,165,250,0.14)] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">
             <span>Mentor / Package</span><span>Unlocks In</span><span>Amount</span><span>Progress</span><span>Claim Date</span>
           </div>
-          {vestingRows.map(([mentor, subtitle, unlock, date, amount, progress], index) => (
-            <div key={mentor} className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#2dd4bf]/35 bg-[#2dd4bf]/10 text-[#2dd4bf]">{["◈", "⬢", "⬡", "⛨"][index]}</div>
-                <div>
-                  <p className="font-bold text-white">{mentor}</p>
-                  <p className="text-[10px] text-[#707b89]">{subtitle}</p>
-                </div>
-              </div>
-              <div>
-                <p className="font-bold text-white">{unlock}</p>
-                <p className="text-[10px] text-[#707b89]">{date}</p>
-              </div>
-              <p className="font-bold text-white">{amount}</p>
-              <div className="flex items-center gap-3">
-                <div className="h-[6px] flex-1 rounded-full bg-[rgba(96,165,250,0.14)]">
-                  <div className="h-[6px] rounded-full bg-[#2dd4bf]" style={{ width: progress }} />
-                </div>
-                <span className="text-[10px] text-[#d1d5db]">{progress}</span>
-              </div>
-              <span className="text-center text-[#707b89]">-</span>
-            </div>
+          {vestingRows.map(([mentor, subtitle, unlock, date, amount, progress, tokenId], index) => (
+            <VestingRow key={mentor} row={{ mentor, subtitle, unlock, date, amount, progress, tokenId }} index={index} />
           ))}
           <button className="mt-4 flex w-full items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">VIEW ALL VESTING <span>›</span></button>
         </div>
@@ -222,6 +236,67 @@ export default function EarningsView() {
           <button className="mt-4 flex w-full items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">VIEW ALL ACTIVITY <span>›</span></button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function VestingRow({
+  row,
+  index,
+}: {
+  row: {
+    mentor: string;
+    subtitle: string;
+    unlock: string;
+    date: string;
+    amount: string;
+    progress: string;
+    tokenId?: string;
+  };
+  index: number;
+}) {
+  const { writeContractAsync } = useWriteContract();
+  const tokenId = row.tokenId ? Number(row.tokenId) : undefined;
+  const claimable = useMentorClaimable(tokenId);
+  const vestingProgress = useVestingProgress(tokenId);
+  const liveAmount = tokenId !== undefined && claimable.data !== undefined ? formatOg(claimable.data as bigint) : row.amount;
+  const liveProgress =
+    tokenId !== undefined && vestingProgress.data !== undefined
+      ? `${Math.min(100, Number(vestingProgress.data) / 100)}%`
+      : row.progress;
+
+  async function vestOrClaim() {
+    if (tokenId === undefined) return;
+    const claim = window.confirm("OK = claim vested, Cancel = vest earnings");
+    await writeContractAsync({
+      address: MARKETPLACE_ADDRESS,
+      abi: marketplaceAbi,
+      functionName: claim ? "claimVested" : "vestEarnings",
+      args: [BigInt(tokenId)],
+    });
+  }
+
+  return (
+    <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#2dd4bf]/35 bg-[#2dd4bf]/10 text-[#2dd4bf]">{["◈", "⬢", "⬡", "⛨"][index % 4]}</div>
+        <div>
+          <p className="font-bold text-white">{row.mentor}</p>
+          <p className="text-[10px] text-[#707b89]">{row.subtitle}</p>
+        </div>
+      </div>
+      <div>
+        <p className="font-bold text-white">{row.unlock}</p>
+        <p className="text-[10px] text-[#707b89]">{row.date}</p>
+      </div>
+      <p className="font-bold text-white">{liveAmount}</p>
+      <div className="flex items-center gap-3">
+        <div className="h-[6px] flex-1 rounded-full bg-[rgba(96,165,250,0.14)]">
+          <div className="h-[6px] rounded-full bg-[#2dd4bf]" style={{ width: liveProgress }} />
+        </div>
+        <span className="text-[10px] text-[#d1d5db]">{liveProgress}</span>
+      </div>
+      <button className="text-center text-[#2dd4bf]" disabled={tokenId === undefined} onClick={vestOrClaim} type="button">›</button>
     </div>
   );
 }

@@ -27,7 +27,7 @@ const QueryBody = z.object({
 
 // POST /query
 // Body JSON: { tokenId, question, userAddress, signature, signedAt, settlementTxHash }
-// Flow: get storageRef on-chain → verify subscription/share access → download from 0G Storage
+// Flow: get storageRef on-chain → verify share access → download from 0G Storage
 // → TEE inference via 0G Compute → distribute revenue → update confidence on-chain
 // → return answer + TEE proof
 router.post("/", async (req: Request, res: Response) => {
@@ -91,11 +91,11 @@ router.post("/", async (req: Request, res: Response) => {
       }
     }
 
-    // 3. Gate query execution by on-chain access: active subscription or shares.
+    // 3. Gate query execution by on-chain access. Product UX uses shares as access.
     const access = await checkQueryAccess(tokenId, userAddress);
     if (!access.hasAccess) {
       res.status(403).json({
-        error: "Query access denied. Buy shares or subscribe before querying this mentor.",
+        error: "Query access denied. Buy shares before querying this mentor.",
         access,
       });
       return;

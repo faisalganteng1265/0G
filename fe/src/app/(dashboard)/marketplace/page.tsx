@@ -9,6 +9,7 @@ import {
   FileText,
   Lock,
   MessageSquare,
+  Send,
   ShieldCheck,
   Snowflake,
   TrendingUp,
@@ -16,10 +17,15 @@ import {
   Users,
   Wallet,
   Waves,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { useAccount, usePublicClient, useSendTransaction, useSignMessage } from "wagmi";
 
-const mentors = [
+import { api, type TxPayload } from "@/lib/api";
+import { formatOg, useMarketQuote, useMentors, type MentorMeta } from "@/hooks/useMarketplace";
+
+const fallbackMentors = [
   {
     id: 1,
     name: "IndoRegulator_01",
@@ -59,18 +65,18 @@ const mentors = [
     image:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
   },
-];
+] as const;
 
 const gapReports = [
   { id: 1, title: "EU MiCA Compliance V2", category: "Regulatory", mentors: 42, status: "HIGH", reward: "+18.4K", icon: ClipboardList },
   { id: 2, title: "L2 Rollup Security Exploits", category: "CyberSec", mentors: 89, status: "HOT", reward: "+31.2K", icon: Crosshair },
   { id: 3, title: "MEV Protection Mechanisms", category: "DeFi", mentors: 37, status: "RISING", reward: "+12.7K", icon: UserRound },
-];
+] as const;
 
 const topMentors = [
-  { ...mentors[2], change: "+14.2% This Week" },
-  { ...mentors[0], change: "+9.5% This Week" },
-  { ...mentors[1], change: "+7.8% This Week" },
+  { ...fallbackMentors[2], change: "+14.2% This Week" },
+  { ...fallbackMentors[0], change: "+9.5% This Week" },
+  { ...fallbackMentors[1], change: "+7.8% This Week" },
 ];
 
 const marketplaceStats = [
@@ -152,8 +158,385 @@ function Sparkline({ tone = "teal" }: { tone?: "teal" | "blue" | "amber" }) {
   );
 }
 
+function useTxPayloadSender() {
+  const publicClient = usePublicClient();
+  const { sendTransactionAsync } = useSendTransaction();
+
+  return async (tx: TxPayload) => {
+    const hash = await sendTransactionAsync({
+      to: tx.to,
+      data: tx.data,
+      value: BigInt(tx.value),
+    });
+    await publicClient?.waitForTransactionReceipt({ hash });
+    return hash;
+  };
+}
+
+function BuySharesButton({
+  children,
+  className,
+  tokenId,
+}: {
+  children: ReactNode;
+  className: string;
+  tokenId?: number;
+}) {
+  const sendPayload = useTxPayloadSender();
+  const [busy, setBusy] = useState(false);
+
+  async function buyShares() {
+    if (tokenId === undefined) return;
+    setBusy(true);
+    try {
+      const result = await api.buildBuySharesTx({ tokenId, amount: 1 });
+      await sendPayload(result.tx);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button className={className} disabled={busy || tokenId === undefined} onClick={buyShares} type="button">
+      {busy ? "PENDING..." : children}
+    </button>
+  );
+}
+
+function MentorCard({ mentor, index }: { mentor: DisplayMentor; index: number }) {
+  const sendPayload = useTxPayloadSender();
+  const quote = useMarketQuote(mentor.tokenId, 1);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  async function buyAccess() {
+    if (mentor.tokenId === undefined) return;
+    setBusy("buy");
+    try {
+      const result = await api.buildBuySharesTx({ tokenId: mentor.tokenId, amount: 1 });
+      await sendPayload(result.tx);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const sharePrice = quote.data?.sharePriceWei ? formatOg(quote.data.sharePriceWei) : `${mentor.sharePrice} 0G`;
+
+  return (
+    <>
+      <div
+        className={`relative flex min-h-[286px] flex-col overflow-hidden rounded-lg border p-5 ${cardToneClasses[mentor.tone]}`}
+      >
+        <div className={`absolute right-0 top-0 rounded-bl-2xl border-b border-l border-current/25 px-4 py-2 text-[10px] font-extrabold tracking-[0.14em] ${toneTextClasses[mentor.tone]}`}>
+          {String(index + 1).padStart(2, "0")}
+        </div>
+
+        <div className="mb-4 flex items-start gap-4 pr-8">
+          <div
+            aria-label={`${mentor.name} avatar`}
+            className={`h-16 w-16 shrink-0 rounded-md border bg-[#101215] bg-cover bg-center ${mentor.tone === "security" ? "border-[rgba(251,191,36,0.34)]" : mentor.tone === "defi" ? "border-[rgba(96,165,250,0.34)]" : "border-[rgba(74,222,128,0.34)]"}`}
+            role="img"
+            style={{ backgroundImage: `url(${mentor.image})` }}
+          />
+          <div className="min-w-0 pt-1">
+            <div className="mb-2 flex min-w-0 items-center gap-1.5">
+              <span className="truncate text-[13px] font-bold text-white">{mentor.name}</span>
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#2dd4bf]" aria-hidden="true" />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={`rounded-[3px] border px-2 py-1 text-[9px] font-bold tracking-[0.1em] ${badgeToneClasses[mentor.tone]}`}>
+                {mentor.tag}
+              </span>
+              <span className="rounded-[3px] border border-[#343840] bg-[#101215] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.1em] text-[#9ca3af]">
+                {mentor.signal}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-5 grid grid-cols-2 gap-x-7 gap-y-4 border-b border-[#1f2937]/70 pb-4">
+          {[
+            { label: "KNOWLEDGE TYPE", value: mentor.knowledgeType, className: "text-[#d1d5db]" },
+            { label: "GAP COUNT", value: mentor.gapCount, className: toneTextClasses[mentor.tone] },
+            { label: "SHARE PRICE", value: sharePrice, className: "text-[#d1d5db]" },
+          ].map((stat) => (
+            <div key={stat.label}>
+              <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#4b5563]">
+                {stat.label}
+              </p>
+              <p className={`text-[11px] font-bold ${stat.className}`}>{stat.value}</p>
+            </div>
+          ))}
+          <div>
+            <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#4b5563]">
+              CONFIDENCE SCORE
+            </p>
+            <p className={`mb-2 text-[11px] font-bold ${toneTextClasses[mentor.tone]}`}>
+              {mentor.confidenceScore}
+            </p>
+            <div className="h-1.5 rounded-full border border-[#26313a] bg-[#07090b]">
+              <div
+                className={`h-full rounded-full ${toneProgressClasses[mentor.tone]}`}
+                style={{ width: mentor.confidenceScore }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-auto flex gap-2">
+          <button className={`flex-1 px-0 py-2 text-[10px] ${subtleButtonClass}`} disabled={mentor.tokenId === undefined} onClick={() => setIsChatOpen(true)} type="button">
+            <MessageSquare className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />
+            ASK MENTOR
+          </button>
+          <button className={`flex-1 cursor-pointer rounded border px-0 py-2 font-mono text-[10px] font-extrabold tracking-[0.1em] ${buyAccessToneClasses[mentor.tone]}`} disabled={busy === "buy" || mentor.tokenId === undefined} onClick={buyAccess} type="button">
+            <Lock className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />
+            {busy === "buy" ? "PENDING..." : "BUY SHARES"}
+          </button>
+        </div>
+      </div>
+
+      {isChatOpen && <MentorChatModal mentor={mentor} onClose={() => setIsChatOpen(false)} />}
+    </>
+  );
+}
+
+type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  text: string;
+  meta?: string;
+};
+
+function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: () => void }) {
+  const { address } = useAccount();
+  const { signMessageAsync } = useSignMessage();
+  const sendPayload = useTxPayloadSender();
+  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: "system",
+      text: `Connected to ${mentor.name}. Each answer is settled on-chain before BE runs the TEE query.`,
+    },
+  ]);
+  const [busy, setBusy] = useState(false);
+
+  async function submitQuestion() {
+    if (!question.trim() || mentor.tokenId === undefined || !address) return;
+    const currentQuestion = question.trim();
+    setQuestion("");
+    setBusy(true);
+    setMessages((current) => [...current, { role: "user", text: currentQuestion }]);
+
+    try {
+      const message = await api.getQueryMessage({
+        tokenId: mentor.tokenId,
+        question: currentQuestion,
+        userAddress: address,
+      });
+      const signature = await signMessageAsync({ message: message.message });
+      const settlement = await api.buildExecuteQueryTx({ tokenId: mentor.tokenId });
+      const settlementTxHash = await sendPayload(settlement.tx);
+      const answer = await api.sendQuery({
+        tokenId: mentor.tokenId,
+        question: currentQuestion,
+        userAddress: address,
+        signature,
+        signedAt: message.signedAt,
+        settlementTxHash,
+      });
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          text: answer.answer,
+          meta: `${answer.teeVerified ? "TEE VERIFIED" : "TEE UNVERIFIED"} / confidence ${answer.oracle.confidenceUpdated}%`,
+        },
+      ]);
+    } catch (err) {
+      setMessages((current) => [
+        ...current,
+        {
+          role: "system",
+          text: err instanceof Error ? err.message : String(err),
+        },
+      ]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="flex h-[min(720px,calc(100vh-48px))] w-full max-w-[860px] flex-col overflow-hidden rounded-lg border border-[rgba(45,212,191,0.32)] bg-[#050607] shadow-[0_0_42px_rgba(45,212,191,0.12)]">
+        <div className="flex items-center justify-between border-b border-[#1f2937] bg-black px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div
+              className={`h-11 w-11 shrink-0 rounded border bg-[#101215] bg-cover bg-center ${mentor.tone === "security" ? "border-[rgba(251,191,36,0.34)]" : mentor.tone === "defi" ? "border-[rgba(96,165,250,0.34)]" : "border-[rgba(74,222,128,0.34)]"}`}
+              style={{ backgroundImage: `url(${mentor.image})` }}
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-white">{mentor.name}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">
+                Mentor #{mentor.tokenId} / {mentor.tag}
+              </p>
+            </div>
+          </div>
+          <button className="rounded border border-[#374151] p-2 text-[#9ca3af] hover:text-white" onClick={onClose} type="button">
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-[1fr_220px]">
+          <div className="flex min-h-0 flex-col">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+              {messages.map((message, index) => (
+                <div
+                  key={`${message.role}-${index}`}
+                  className={`max-w-[82%] rounded border px-3 py-2 text-xs leading-[1.65] ${
+                    message.role === "user"
+                      ? "ml-auto border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.1)] text-white"
+                      : message.role === "assistant"
+                        ? "border-[rgba(96,165,250,0.18)] bg-black text-[#d1d5db]"
+                        : "mx-auto border-[#374151] bg-[#0d1114] text-[#8b95a3]"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{message.text}</p>
+                  {message.meta && (
+                    <p className="mt-2 border-t border-[#1f2937] pt-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">
+                      {message.meta}
+                    </p>
+                  )}
+                </div>
+              ))}
+              {busy && (
+                <div className="w-fit rounded border border-[#374151] bg-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">
+                  Signing, settling, then querying TEE...
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-[#1f2937] bg-black p-3">
+              <div className="grid grid-cols-[1fr_44px] gap-2">
+                <textarea
+                  className="max-h-28 min-h-12 resize-none rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs leading-[1.5] text-white outline-none placeholder:text-[#586474]"
+                  placeholder={address ? "Ask a tactical question..." : "Connect wallet to ask this mentor"}
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      void submitQuestion();
+                    }
+                  }}
+                />
+                <button
+                  className="flex h-12 items-center justify-center rounded border border-[rgba(45,212,191,0.6)] bg-[rgba(45,212,191,0.12)] text-[#2dd4bf] disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!address || !question.trim() || busy}
+                  onClick={submitQuestion}
+                  type="button"
+                >
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <aside className="hidden border-l border-[#1f2937] bg-black p-4 md:block">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#586474]">Session</p>
+            <div className="space-y-3 text-[10px]">
+              <div className="rounded border border-[#26333d] bg-[#050607] p-3">
+                <p className="text-[#586474]">Access</p>
+                <p className="mt-1 font-bold text-[#2dd4bf]">Wallet gated</p>
+              </div>
+              <div className="rounded border border-[#26333d] bg-[#050607] p-3">
+                <p className="text-[#586474]">Settlement</p>
+                <p className="mt-1 font-bold text-white">executeQuery</p>
+              </div>
+              <div className="rounded border border-[#26333d] bg-[#050607] p-3">
+                <p className="text-[#586474]">Confidence</p>
+                <p className="mt-1 font-bold text-white">{mentor.confidenceScore}</p>
+              </div>
+              <div className="rounded border border-[#26333d] bg-[#050607] p-3">
+                <p className="text-[#586474]">Gap Count</p>
+                <p className="mt-1 font-bold text-white">{mentor.gapCount}</p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type MentorTone = keyof typeof cardToneClasses;
+type DisplayMentor = {
+  id: number;
+  tokenId?: number;
+  name: string;
+  tag: string;
+  knowledgeType: string;
+  gapCount: string;
+  sharePrice: string;
+  confidenceScore: string;
+  tone: MentorTone;
+  signal: string;
+  image: string;
+};
+
+const toneCycle: MentorTone[] = ["regulatory", "defi", "security"];
+
+function toDisplayMentor(mentor: MentorMeta, index: number): DisplayMentor {
+  const tone = toneCycle[index % toneCycle.length];
+  return {
+    id: mentor.tokenId,
+    tokenId: mentor.tokenId,
+    name: mentor.name,
+    tag: mentor.category.toUpperCase(),
+    knowledgeType: mentor.category,
+    gapCount: `${mentor.gapCount} Unresolved`,
+    sharePrice: "-",
+    confidenceScore: `${mentor.confidenceScore}%`,
+    tone,
+    signal: mentor.status === 2 ? "VERIFIED" : "DRAFT",
+    image: fallbackMentors[index % fallbackMentors.length].image,
+  };
+}
+
 export default function MarketplacePage() {
   const [activeFilter, setActiveFilter] = useState("TRENDING");
+  const { data: onchainMentors = [] } = useMentors();
+  const displayMentors = onchainMentors.length > 0 ? onchainMentors.map(toDisplayMentor) : fallbackMentors;
+  const topDisplayMentors: Array<DisplayMentor & { change: string }> =
+    onchainMentors.length > 0
+      ? displayMentors.slice(0, 3).map((mentor) => ({ ...mentor, change: "+0.0% This Week" }))
+      : topMentors.map((mentor) => ({ ...mentor, tokenId: undefined }));
+  const liveStats =
+    onchainMentors.length > 0
+      ? [
+          { label: "ACTIVE MENTORS", value: String(onchainMentors.length), sub: "on-chain", icon: Users, tone: "text-[#2dd4bf]" },
+          {
+            label: "TOTAL QUERIES",
+            value: String(onchainMentors.reduce((sum, mentor) => sum + mentor.totalQueries, 0)),
+            sub: "recorded",
+            icon: Lock,
+            tone: "text-[#2dd4bf]",
+          },
+          {
+            label: "AVG. CONFIDENCE",
+            value: `${Math.round(onchainMentors.reduce((sum, mentor) => sum + mentor.confidenceScore, 0) / onchainMentors.length)}%`,
+            sub: "oracle score",
+            icon: Waves,
+            tone: "text-[#2dd4bf]",
+          },
+          {
+            label: "GAP OPPORTUNITIES",
+            value: String(onchainMentors.reduce((sum, mentor) => sum + mentor.gapCount, 0)),
+            sub: "unresolved",
+            icon: Crosshair,
+            tone: "text-[#fbbf24]",
+          },
+        ]
+      : marketplaceStats;
 
   return (
     <>
@@ -168,7 +551,7 @@ export default function MarketplacePage() {
               </div>
 
               <div className="grid flex-1 grid-cols-4 gap-3">
-                {marketplaceStats.map((stat) => {
+                {liveStats.map((stat) => {
                   const StatIcon = stat.icon;
 
                   return (
@@ -214,78 +597,8 @@ export default function MarketplacePage() {
           </div>
 
           <div className="mb-4 grid grid-cols-3 gap-4">
-            {mentors.map((mentor, index) => (
-              <div
-                key={mentor.id}
-                className={`relative flex min-h-[286px] flex-col overflow-hidden rounded-lg border p-5 ${cardToneClasses[mentor.tone]}`}
-              >
-                <div className={`absolute right-0 top-0 rounded-bl-2xl border-b border-l border-current/25 px-4 py-2 text-[10px] font-extrabold tracking-[0.14em] ${toneTextClasses[mentor.tone]}`}>
-                  {String(index + 1).padStart(2, "0")}
-                </div>
-
-                <div className="mb-4 flex items-start gap-4 pr-8">
-                  <div
-                    aria-label={`${mentor.name} avatar`}
-                    className={`h-16 w-16 shrink-0 rounded-md border bg-[#101215] bg-cover bg-center ${mentor.tone === "security" ? "border-[rgba(251,191,36,0.34)]" : mentor.tone === "defi" ? "border-[rgba(96,165,250,0.34)]" : "border-[rgba(74,222,128,0.34)]"}`}
-                    role="img"
-                    style={{ backgroundImage: `url(${mentor.image})` }}
-                  />
-                  <div className="min-w-0 pt-1">
-                    <div className="mb-2 flex min-w-0 items-center gap-1.5">
-                      <span className="truncate text-[13px] font-bold text-white">{mentor.name}</span>
-                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#2dd4bf]" aria-hidden="true" />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className={`rounded-[3px] border px-2 py-1 text-[9px] font-bold tracking-[0.1em] ${badgeToneClasses[mentor.tone]}`}>
-                        {mentor.tag}
-                      </span>
-                      <span className="rounded-[3px] border border-[#343840] bg-[#101215] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.1em] text-[#9ca3af]">
-                        {mentor.signal}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-5 grid grid-cols-2 gap-x-7 gap-y-4 border-b border-[#1f2937]/70 pb-4">
-                  {[
-                    { label: "KNOWLEDGE TYPE", value: mentor.knowledgeType, className: "text-[#d1d5db]" },
-                    { label: "GAP COUNT", value: mentor.gapCount, className: toneTextClasses[mentor.tone] },
-                    { label: "SHARE PRICE", value: `${mentor.sharePrice} 0G`, className: "text-[#d1d5db]" },
-                  ].map((stat) => (
-                    <div key={stat.label}>
-                      <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#4b5563]">
-                        {stat.label}
-                      </p>
-                      <p className={`text-[11px] font-bold ${stat.className}`}>{stat.value}</p>
-                    </div>
-                  ))}
-                  <div>
-                    <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#4b5563]">
-                      CONFIDENCE SCORE
-                    </p>
-                    <p className={`mb-2 text-[11px] font-bold ${toneTextClasses[mentor.tone]}`}>
-                      {mentor.confidenceScore}
-                    </p>
-                    <div className="h-1.5 rounded-full border border-[#26313a] bg-[#07090b]">
-                      <div
-                        className={`h-full rounded-full ${toneProgressClasses[mentor.tone]}`}
-                        style={{ width: mentor.confidenceScore }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-auto flex gap-2">
-                  <button className={`flex-1 px-0 py-2 text-[10px] ${subtleButtonClass}`}>
-                    <MessageSquare className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />
-                    ASK MENTOR
-                  </button>
-                  <button className={`flex-1 cursor-pointer rounded border px-0 py-2 font-mono text-[10px] font-extrabold tracking-[0.1em] ${buyAccessToneClasses[mentor.tone]}`}>
-                    <Lock className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />
-                    BUY ACCESS
-                  </button>
-                </div>
-              </div>
+            {displayMentors.map((mentor, index) => (
+              <MentorCard key={mentor.id} mentor={mentor} index={index} />
             ))}
           </div>
 
@@ -372,7 +685,7 @@ export default function MarketplacePage() {
               </div>
 
               <div>
-                {topMentors.map((mentor) => (
+                {topDisplayMentors.map((mentor) => (
                   <div
                     key={mentor.id}
                     className="grid grid-cols-[1.35fr_0.55fr_0.55fr_0.75fr] items-center gap-3 border-b border-[#15202a] py-2"
@@ -388,9 +701,9 @@ export default function MarketplacePage() {
                     </div>
                     <span className="font-extrabold text-[#2dd4bf]">{mentor.change.split(" ")[0]}</span>
                     <Sparkline tone="teal" />
-                    <button className={`shrink-0 px-4 py-2 text-[10px] ${accentButtonClass}`}>
+                    <BuySharesButton className={`shrink-0 px-4 py-2 text-[10px] ${accentButtonClass}`} tokenId={mentor.tokenId}>
                       BUY SHARES
-                    </button>
+                    </BuySharesButton>
                   </div>
                 ))}
               </div>

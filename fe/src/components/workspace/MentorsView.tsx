@@ -1,9 +1,28 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { useWriteContract } from "wagmi";
+
+import { useMentors } from "@/hooks/useMarketplace";
+import { api } from "@/lib/api";
+import { MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
+
 import { subtleButtonClass, accentButtonClass, solidAccentBtn } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function MentorsView() {
-  const mentors = [
+  const { data: onchainMentors = [], refetch } = useMentors();
+  const { writeContractAsync } = useWriteContract();
+  const [isMintOpen, setIsMintOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [mintName, setMintName] = useState("");
+  const [mintCategory, setMintCategory] = useState("");
+  const [uploadTokenId, setUploadTokenId] = useState("");
+  const [uploadText, setUploadText] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [modalBusy, setModalBusy] = useState(false);
+  const fallbackMentors = [
     {
       name: "IndoRegulator_01",
       status: "DRAFT" as const,
@@ -47,6 +66,56 @@ export default function MentorsView() {
         "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
     },
   ];
+  const mentors =
+    onchainMentors.length > 0
+      ? onchainMentors.map((mentor, index) => ({
+          name: mentor.name,
+          status: (mentor.status === 2 ? "READY" : mentor.status === 1 ? "REVIEW" : "DRAFT") as "DRAFT" | "REVIEW" | "READY",
+          category: mentor.category,
+          categoryColor: index % 2 === 0 ? "#4ade80" : "#2dd4bf",
+          description: mentor.storageRef || "Encrypted 0G Storage reference pending.",
+          docs: mentor.totalQueries,
+          gaps: mentor.gapCount,
+          confidence: mentor.confidenceScore,
+          updatedAgo: mentor.lastUpdatedAt ? new Date(mentor.lastUpdatedAt * 1000).toLocaleDateString() : "-",
+          version: `#${mentor.tokenId}`,
+          tokenId: mentor.tokenId,
+          image: fallbackMentors[index % fallbackMentors.length].image,
+        }))
+      : fallbackMentors;
+
+  async function mintMentor(event: FormEvent) {
+    event.preventDefault();
+    setModalBusy(true);
+    await writeContractAsync({
+      address: MARKETPLACE_ADDRESS,
+      abi: marketplaceAbi,
+      functionName: "registerMentor",
+      args: [mintName, mintCategory || "General", "pending"],
+    });
+    setMintName("");
+    setMintCategory("");
+    setIsMintOpen(false);
+    setModalBusy(false);
+    await refetch();
+  }
+
+  async function uploadKnowledge(event: FormEvent) {
+    event.preventDefault();
+    setModalBusy(true);
+    const formData = new FormData();
+    formData.set("mentorId", uploadTokenId);
+    formData.set("tokenId", uploadTokenId);
+    if (uploadFile) formData.set("file", uploadFile);
+    else formData.set("text", uploadText);
+    await api.uploadKnowledge(formData);
+    setUploadTokenId("");
+    setUploadText("");
+    setUploadFile(null);
+    setIsUploadOpen(false);
+    setModalBusy(false);
+    await refetch();
+  }
 
   const statusBadge: Record<"DRAFT" | "REVIEW" | "READY", string> = {
     DRAFT: "border-[#374151] bg-[#111317] text-[#9ca3af]",
@@ -329,10 +398,10 @@ export default function MentorsView() {
               ))}
             </div>
 
-            <button className={`mb-2 flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${solidAccentBtn}`}>
+            <button className={`mb-2 flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${solidAccentBtn}`} onClick={() => setIsMintOpen(true)} type="button">
               PREVIEW MINT FLOW <span className="text-base leading-none">›</span>
             </button>
-            <button className={`flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${subtleButtonClass}`}>
+            <button className={`flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${subtleButtonClass}`} onClick={() => setIsUploadOpen(true)} type="button">
               UPLOAD KNOWLEDGE
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
                 <path d="M5.5 7.5V2.5M5.5 2.5L3 5M5.5 2.5L8 5" stroke="#9ca3af" strokeWidth="1.1" strokeLinecap="round" />
@@ -370,6 +439,37 @@ export default function MentorsView() {
           </div>
         </div>
       </div>
+      {isMintOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <form className={`${panelClass} w-full max-w-[460px] rounded-[7px] p-4`} onSubmit={mintMentor}>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Mint New Mentor</h2>
+              <button className="text-[#8b95a3]" onClick={() => setIsMintOpen(false)} type="button">×</button>
+            </div>
+            <div className="space-y-3">
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Mentor name" required value={mintName} onChange={(event) => setMintName(event.target.value)} />
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Category" value={mintCategory} onChange={(event) => setMintCategory(event.target.value)} />
+              <button className={`w-full py-2.5 text-[10px] ${solidAccentBtn}`} disabled={modalBusy} type="submit">{modalBusy ? "MINTING..." : "MINT ON-CHAIN"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+      {isUploadOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <form className={`${panelClass} w-full max-w-[520px] rounded-[7px] p-4`} onSubmit={uploadKnowledge}>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Upload Knowledge</h2>
+              <button className="text-[#8b95a3]" onClick={() => setIsUploadOpen(false)} type="button">×</button>
+            </div>
+            <div className="space-y-3">
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Token ID" required value={uploadTokenId} onChange={(event) => setUploadTokenId(event.target.value)} />
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-[#8b95a3]" type="file" onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)} />
+              <textarea className="min-h-32 w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Or paste knowledge text" value={uploadText} onChange={(event) => setUploadText(event.target.value)} />
+              <button className={`w-full py-2.5 text-[10px] ${solidAccentBtn}`} disabled={modalBusy || (!uploadFile && !uploadText.trim())} type="submit">{modalBusy ? "UPLOADING..." : "UPLOAD TO 0G STORAGE"}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </>
   );
 }
