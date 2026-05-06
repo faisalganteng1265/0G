@@ -1,14 +1,46 @@
+"use client";
+
+import { useGapEvents, useMentors } from "@/hooks/useMarketplace";
+
 import { subtleButtonClass, accentButtonClass } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function GapsView() {
-  const gaps = [
+  const { data: gapEvents = [] } = useGapEvents();
+  const { data: mentors = [] } = useMentors();
+  const fallbackGaps = [
     ["OSS licensing for foreign-owned PMA", "IndoRegulator_01", "Compliance", "CRITICAL", "28%", "21", "2h ago", "High severity"],
     ["MiCA stablecoin reserve carve-out", "QuantAlpha_7", "Regulation", "HIGH", "41%", "9", "4h ago", "High severity"],
     ["Proxy upgrade incident pattern", "CyberSec_V2", "Security", "MEDIUM", "56%", "5", "6h ago", "Moderate severity"],
     ["Cross-chain bridge risk heuristics", "ChainIntel_3", "Security", "LOW", "72%", "7", "8h ago", "Low severity"],
     ["DAO treasury diversification models", "DeFiSage_01", "Finance", "LOW", "78%", "6", "10h ago", "Low severity"],
+  ];
+  const gaps =
+    gapEvents.length > 0
+      ? gapEvents.slice(0, 5).map((event) => {
+          const mentor = mentors.find((item) => item.tokenId === event.tokenId);
+          const priority = event.count > 20 ? "CRITICAL" : event.count > 10 ? "HIGH" : event.count > 3 ? "MEDIUM" : "LOW";
+          const confidence = Math.max(20, 100 - event.count * 4);
+          return [
+            event.type === "GapResolved" ? "Gap resolved by oracle" : "Low-confidence answer detected",
+            mentor?.name ?? `Mentor #${event.tokenId}`,
+            mentor?.category ?? "Oracle",
+            priority,
+            `${confidence}%`,
+            String(event.count),
+            `Block ${event.blockNumber.toString()}`,
+            priority === "LOW" ? "Low severity" : priority === "MEDIUM" ? "Moderate severity" : "High severity",
+          ];
+        })
+      : fallbackGaps;
+  const totalOpenGaps = mentors.reduce((sum, mentor) => sum + mentor.gapCount, 0) || 128;
+  const criticalGaps = gaps.filter((gap) => gap[3] === "CRITICAL").length || 24;
+  const gapStats = [
+    ["◎", "Total Open Gaps", String(totalOpenGaps), gapEvents.length > 0 ? `${gapEvents.length} events` : "↗ 18", "vs yesterday", "#2dd4bf"],
+    ["△", "Critical Priority", String(criticalGaps), gapEvents.length > 0 ? "live events" : "18.7% of total", "", "#fb7185"],
+    ["♧", "Avg Confidence Recovery", "+21.4%", "30d trend", "spark", "#2dd4bf"],
+    ["♧", "Pending Reviews", String(Math.max(totalOpenGaps - criticalGaps, 0)), "Needs attention", "", "#2dd4bf"],
   ];
 
   const priorityTone: Record<string, string> = {
@@ -28,12 +60,7 @@ export default function GapsView() {
   return (
     <div className="gaps-reference">
       <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[1fr_0.8fr_1.08fr_1.4fr]">
-        {[
-          ["◎", "Total Open Gaps", "128", "↗ 18", "vs yesterday", "#2dd4bf"],
-          ["△", "Critical Priority", "24", "18.7% of total", "", "#fb7185"],
-          ["♧", "Avg Confidence Recovery", "+21.4%", "30d trend", "spark", "#2dd4bf"],
-          ["♧", "Pending Reviews", "17", "Needs attention", "", "#2dd4bf"],
-        ].map(([icon, label, value, detail, extra, color]) => (
+        {gapStats.map(([icon, label, value, detail, extra, color]) => (
           <div key={label} className={`${panelClass} rounded-[7px] p-4`}>
             <div className="flex items-center gap-4">
               <span className="shrink-0 text-[56px] leading-none" style={{ color }}>{icon}</span>

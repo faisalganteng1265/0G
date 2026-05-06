@@ -1,9 +1,18 @@
+"use client";
+
+import { useAccount, useWriteContract } from "wagmi";
+
+import { formatOg, useMentors, usePendingCuratorRewards, useShareBalance, useSharePrice } from "@/hooks/useMarketplace";
+import { MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
+
 import { subtleButtonClass, accentButtonClass, solidAccentBtn } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function SharesView() {
-  const sharePositions = [
+  const { address } = useAccount();
+  const { data: mentors = [] } = useMentors();
+  const fallbackSharePositions = [
     {
       mentor: "IndoRegulator_01",
       shares: "184 shares",
@@ -35,6 +44,17 @@ export default function SharesView() {
         "https://lh3.googleusercontent.com/aida-public/AB6AXuC9hN7Aj8iDuVpi80ZyqSXqOofwILzZ4vWR6r2Y1XFYDb6v14RKB-NGZ5izd5lCKWGoar_4i3PibYHZLmzvVDY5LelKLD7jM6NeqaDjfgfhOI8VRi-jrRGoObVKf8cv5Si0_PsEY8lSLEbEDuv2KEv80bgXjfwtE2mQAlU5ajHb9cVgXzWmZxVZvVihmZvKMnoIQ2o2zRWPxOtGCVWFGG7jVV8F3crN16L8knqQs6E4GSUZFjjtjw9BMfJux0V3dGc26QWq8xOodc",
     },
   ];
+  const liveSharePositions = mentors.slice(0, 3).map((mentor, index) => ({
+    mentor: mentor.name,
+    shares: "0 shares",
+    portfolio: `Mentor #${mentor.tokenId}`,
+    price: "-",
+    change: "+0.0%",
+    rewards: "-",
+    tokenId: mentor.tokenId,
+    image: fallbackSharePositions[index % fallbackSharePositions.length].image,
+  }));
+  const sharePositions = liveSharePositions.length > 0 ? liveSharePositions : fallbackSharePositions;
 
   const rewards = [
     ["IndoRegulator_01 reward", "Weekly usage rewards distribution", "2h ago", "+12.4 OG", "cyan"],
@@ -197,35 +217,7 @@ export default function SharesView() {
             <span>Mentor</span><span>Position</span><span>Share Price</span><span>Weekly Change</span><span>Rewards</span><span>Action</span>
           </div>
           {sharePositions.map((row) => (
-            <div key={row.mentor} className="grid grid-cols-[1.35fr_0.9fr_0.8fr_0.75fr_0.8fr_1fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="h-11 w-11 shrink-0 rounded border border-[rgba(96,165,250,0.25)] bg-cover bg-center" style={{ backgroundImage: `url(${row.image})` }} />
-                <div className="min-w-0">
-                  <p className="truncate font-bold text-white">{row.mentor}</p>
-                  <span className="mt-1 inline-flex rounded border border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)] px-1.5 py-0.5 text-[8px] font-bold text-[#2dd4bf]">ACTIVE</span>
-                </div>
-              </div>
-              <div>
-                <p className="font-bold text-white">{row.shares}</p>
-                <p className="text-[10px] text-[#707b89]">{row.portfolio}</p>
-              </div>
-              <p className="font-bold text-white">{row.price}</p>
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-[#2dd4bf]">{row.change}</span>
-                <svg viewBox="0 0 60 18" className="h-4 w-11" fill="none">
-                  <path d="M0 9L6 12L12 10L18 13L24 8L30 10L36 7L42 8L48 4L54 5L60 2" stroke="#2dd4bf" strokeWidth="1.3" />
-                </svg>
-              </div>
-              <div>
-                <p className="font-bold text-white">{row.rewards}</p>
-                <p className="text-[10px] text-[#707b89]">Available</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className={`px-3 py-1.5 text-[9px] ${accentButtonClass}`}>CLAIM</button>
-                <button className={`px-3 py-1.5 text-[9px] ${subtleButtonClass}`}>MANAGE</button>
-                <span className="text-[#586474]">⋮</span>
-              </div>
-            </div>
+            <SharePositionRow key={row.mentor} row={row} user={address} />
           ))}
           <p className="mt-3 text-[10px] text-[#707b89]">Showing 3 of 3 positions</p>
         </div>
@@ -318,6 +310,83 @@ export default function SharesView() {
             <button className="font-semibold text-[#2dd4bf]">View all →</button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+type SharePosition = {
+  mentor: string;
+  shares: string;
+  portfolio: string;
+  price: string;
+  change: string;
+  rewards: string;
+  image: string;
+  tokenId?: number;
+};
+
+function SharePositionRow({ row, user }: { row: SharePosition; user?: `0x${string}` }) {
+  const { writeContractAsync } = useWriteContract();
+  const balance = useShareBalance(row.tokenId, user);
+  const price = useSharePrice(row.tokenId);
+  const pendingRewards = usePendingCuratorRewards(row.tokenId, user);
+  const liveShares = row.tokenId !== undefined && balance.data !== undefined ? `${Number(balance.data)} shares` : row.shares;
+  const livePrice = row.tokenId !== undefined && price.data !== undefined ? formatOg(price.data as bigint) : row.price;
+  const liveRewards = row.tokenId !== undefined && pendingRewards.data !== undefined ? formatOg(pendingRewards.data as bigint) : row.rewards;
+
+  async function claimRewards() {
+    if (row.tokenId === undefined) return;
+    await writeContractAsync({
+      address: MARKETPLACE_ADDRESS,
+      abi: marketplaceAbi,
+      functionName: "claimCuratorRewards",
+      args: [BigInt(row.tokenId)],
+    });
+    await pendingRewards.refetch();
+  }
+
+  async function sellShares() {
+    if (row.tokenId === undefined) return;
+    const amount = Number(window.prompt("Amount to sell", "1"));
+    if (!amount) return;
+    await writeContractAsync({
+      address: MARKETPLACE_ADDRESS,
+      abi: marketplaceAbi,
+      functionName: "sellShares",
+      args: [BigInt(row.tokenId), amount],
+    });
+    await balance.refetch();
+  }
+
+  return (
+    <div className="grid grid-cols-[1.35fr_0.9fr_0.8fr_0.75fr_0.8fr_1fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="h-11 w-11 shrink-0 rounded border border-[rgba(96,165,250,0.25)] bg-cover bg-center" style={{ backgroundImage: `url(${row.image})` }} />
+        <div className="min-w-0">
+          <p className="truncate font-bold text-white">{row.mentor}</p>
+          <span className="mt-1 inline-flex rounded border border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)] px-1.5 py-0.5 text-[8px] font-bold text-[#2dd4bf]">ACTIVE</span>
+        </div>
+      </div>
+      <div>
+        <p className="font-bold text-white">{liveShares}</p>
+        <p className="text-[10px] text-[#707b89]">{row.portfolio}</p>
+      </div>
+      <p className="font-bold text-white">{livePrice}</p>
+      <div className="flex items-center gap-3">
+        <span className="font-bold text-[#2dd4bf]">{row.change}</span>
+        <svg viewBox="0 0 60 18" className="h-4 w-11" fill="none">
+          <path d="M0 9L6 12L12 10L18 13L24 8L30 10L36 7L42 8L48 4L54 5L60 2" stroke="#2dd4bf" strokeWidth="1.3" />
+        </svg>
+      </div>
+      <div>
+        <p className="font-bold text-white">{liveRewards}</p>
+        <p className="text-[10px] text-[#707b89]">Available</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <button className={`px-3 py-1.5 text-[9px] ${accentButtonClass}`} disabled={row.tokenId === undefined} onClick={claimRewards} type="button">CLAIM</button>
+        <button className={`px-3 py-1.5 text-[9px] ${subtleButtonClass}`} disabled={row.tokenId === undefined} onClick={sellShares} type="button">MANAGE</button>
+        <span className="text-[#586474]">⋮</span>
       </div>
     </div>
   );

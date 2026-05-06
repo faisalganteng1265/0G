@@ -21,8 +21,6 @@ const MARKETPLACE_ABI = [
   "function executeQuery(uint256 mentorId) external payable",
   "function getShareBalance(uint256 mentorId, address holder) external view returns (uint32)",
   "function getSharePrice(uint256 mentorId) external view returns (uint256)",
-  "function isSubscribed(uint256 mentorId, address user) external view returns (bool)",
-  "function subscribe(uint256 mentorId) external payable",
 ];
 
 const ACCESS_SHARES_ABI = [
@@ -33,8 +31,6 @@ const ACCESS_SHARES_ABI = [
 
 const REVENUE_ABI = [
   "function QUERY_PRICE() external view returns (uint256)",
-  "function SUBSCRIPTION_PRICE() external view returns (uint256)",
-  "function isSubscribed(uint256 mentorId, address user) external view returns (bool)",
 ];
 
 const marketplaceInterface = new ethers.Interface(MARKETPLACE_ABI);
@@ -246,12 +242,11 @@ export async function recordQuery(tokenId: number): Promise<void> {
 export type QueryAccess = {
   checked: boolean;
   hasAccess: boolean;
-  reason: "contracts-not-configured" | "subscribed" | "shareholder" | "no-access";
+  reason: "contracts-not-configured" | "shareholder" | "no-access";
   shareBalance: number;
-  subscribed: boolean;
 };
 
-// Query access is granted by either an active subscription or any access shares.
+// Query access is granted only by holding access shares.
 export async function checkQueryAccess(
   tokenId: number,
   userAddress?: string
@@ -265,7 +260,6 @@ export async function checkQueryAccess(
       hasAccess: true,
       reason: "contracts-not-configured",
       shareBalance: 0,
-      subscribed: false,
     };
   }
 
@@ -275,39 +269,27 @@ export async function checkQueryAccess(
       hasAccess: false,
       reason: "no-access",
       shareBalance: 0,
-      subscribed: false,
     };
   }
 
   const provider = getProvider();
   let shareBalance = 0;
-  let subscribed = false;
 
   if (hasMarketplace) {
     const marketplace = getMarketplaceContract(provider);
-    const [shares, isSubscribed] = await Promise.all([
-      marketplace.getShareBalance(tokenId, userAddress),
-      marketplace.isSubscribed(tokenId, userAddress),
-    ]);
+    const shares = await marketplace.getShareBalance(tokenId, userAddress);
     shareBalance = Number(shares);
-    subscribed = Boolean(isSubscribed);
   } else {
     const shares = getAccessSharesContract(provider);
-    const revenue = getRevenueContract(provider);
-    const [balance, isSubscribed] = await Promise.all([
-      shares.balanceOf(tokenId, userAddress),
-      revenue.isSubscribed(tokenId, userAddress),
-    ]);
+    const balance = await shares.balanceOf(tokenId, userAddress);
     shareBalance = Number(balance);
-    subscribed = Boolean(isSubscribed);
   }
 
   return {
     checked: true,
-    hasAccess: subscribed || shareBalance > 0,
-    reason: subscribed ? "subscribed" : shareBalance > 0 ? "shareholder" : "no-access",
+    hasAccess: shareBalance > 0,
+    reason: shareBalance > 0 ? "shareholder" : "no-access",
     shareBalance,
-    subscribed,
   };
 }
 
@@ -323,7 +305,6 @@ export async function getMarketQuote(tokenId: number, amount: number) {
 
   let sharePrice: bigint | null = null;
   let buySharesCost: bigint | null = null;
-  let subscriptionPrice = ethers.parseEther(process.env.SUBSCRIPTION_PRICE_OG ?? "0.05");
   let queryPrice = ethers.parseEther(process.env.QUERY_PRICE_OG ?? "0.0005");
 
   if (hasMarketplace) {
@@ -341,11 +322,7 @@ export async function getMarketQuote(tokenId: number, amount: number) {
 
   if (hasRevenue) {
     const revenue = getRevenueContract(provider);
-    const [subPrice, qPrice] = await Promise.all([
-      revenue.SUBSCRIPTION_PRICE(),
-      revenue.QUERY_PRICE(),
-    ]);
-    subscriptionPrice = subPrice;
+    const qPrice = await revenue.QUERY_PRICE();
     queryPrice = qPrice;
   }
 
@@ -354,17 +331,7 @@ export async function getMarketQuote(tokenId: number, amount: number) {
     amount,
     sharePriceWei: sharePrice?.toString() ?? null,
     buySharesCostWei: buySharesCost?.toString() ?? null,
-    subscriptionPriceWei: subscriptionPrice.toString(),
     queryPriceWei: queryPrice.toString(),
-  };
-}
-
-export function buildSubscribeTx(tokenId: number, valueWei: string) {
-  if (!process.env.CONTRACT_MARKETPLACE) throw new Error("CONTRACT_MARKETPLACE not set");
-  return {
-    to: process.env.CONTRACT_MARKETPLACE,
-    value: valueWei,
-    data: marketplaceInterface.encodeFunctionData("subscribe", [tokenId]),
   };
 }
 

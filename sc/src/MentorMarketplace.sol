@@ -76,21 +76,9 @@ contract MentorMarketplace is Ownable, ReentrancyGuard {
 
     // ─── Learner flow ─────────────────────────────────────────────────────────
 
-    function subscribe(uint256 mentorId) external payable nonReentrant {
-        revenue.subscribe{value: msg.value}(mentorId, msg.sender);
-    }
-
-    /// Pay-per-query: verify access, record query on-chain, distribute revenue.
+    /// Pay-per-query: only shareholders can query private mentor knowledge.
     function executeQuery(uint256 mentorId) external payable nonReentrant {
-        if (revenue.isSubscribed(mentorId, msg.sender)) {
-            inft.recordQuery(mentorId);
-            emit QueryExecuted(mentorId, msg.sender);
-            if (msg.value > 0) {
-                (bool ok,) = msg.sender.call{value: msg.value}("");
-                require(ok, "refund failed");
-            }
-            return;
-        }
+        require(sharesMarket.balanceOf(mentorId, msg.sender) > 0, "not shareholder");
         revenue.payPerQuery{value: msg.value}(mentorId);
         inft.recordQuery(mentorId);
         emit QueryExecuted(mentorId, msg.sender);
@@ -157,12 +145,12 @@ contract MentorMarketplace is Ownable, ReentrancyGuard {
         return revenue.pendingCuratorRewards(mentorId, holder);
     }
 
-    function getVestingProgress(uint256 mentorId) external view returns (uint256 progressBps) {
-        return vesting.vestingProgress(mentorId);
+    function getMentorClaimable(uint256 mentorId) external view returns (uint256) {
+        return revenue.mentorClaimable(mentorId);
     }
 
-    function isSubscribed(uint256 mentorId, address user) external view returns (bool) {
-        return revenue.isSubscribed(mentorId, user);
+    function getVestingProgress(uint256 mentorId) external view returns (uint256 progressBps) {
+        return vesting.vestingProgress(mentorId);
     }
 
     receive() external payable {}

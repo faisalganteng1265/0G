@@ -5,7 +5,6 @@ import { buildQueryAccessMessage } from "../lib/auth";
 import {
   buildBuySharesTx,
   buildExecuteQueryTx,
-  buildSubscribeTx,
   getMarketAccess,
   getMarketQuote,
 } from "../lib/contracts";
@@ -31,7 +30,7 @@ const QueryMessageBody = z.object({
   signedAt: z.coerce.number().int().optional(),
 });
 
-const SubscribeTxBody = TokenQuery.extend({
+const ExecuteQueryTxBody = TokenQuery.extend({
   valueWei: z.string().regex(/^\d+$/).optional(),
 });
 
@@ -86,24 +85,6 @@ router.get("/quote", async (req: Request, res: Response) => {
   }
 });
 
-// POST /market/tx/subscribe
-// Returns tx payload for FE wallet.sendTransaction(tx).
-router.post("/tx/subscribe", async (req: Request, res: Response) => {
-  const parsed = SubscribeTxBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
-
-  try {
-    const quote = await getMarketQuote(parsed.data.tokenId, 1);
-    const valueWei = parsed.data.valueWei ?? quote.subscriptionPriceWei;
-    res.json({ ok: true, tx: buildSubscribeTx(parsed.data.tokenId, valueWei), quote });
-  } catch (err) {
-    res.status(500).json({ error: String(err) });
-  }
-});
-
 // POST /market/tx/buy-shares
 // Returns tx payload for FE wallet.sendTransaction(tx).
 router.post("/tx/buy-shares", async (req: Request, res: Response) => {
@@ -134,7 +115,7 @@ router.post("/tx/buy-shares", async (req: Request, res: Response) => {
 // POST /market/tx/execute-query
 // Optional FE-driven settlement tx. Backend /query can still settle after inference.
 router.post("/tx/execute-query", async (req: Request, res: Response) => {
-  const parsed = SubscribeTxBody.safeParse(req.body);
+  const parsed = ExecuteQueryTxBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;

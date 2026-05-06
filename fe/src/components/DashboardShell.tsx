@@ -12,7 +12,7 @@ interface DashboardShellProps {
 
 export default function DashboardShell({ children }: DashboardShellProps) {
   const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
-  const scrollbarTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const scrollbarTimeoutRef = useRef<number | null>(null);
 
   function handleMainScroll() {
     setIsScrollbarVisible(true);

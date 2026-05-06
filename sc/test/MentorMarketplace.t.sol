@@ -28,7 +28,6 @@ contract MentorMarketplaceTest is Test {
     uint256 mentorId;
 
     // Cache constants so prank is not consumed by static calls inline
-    uint256 SUB_PRICE;
     uint256 Q_PRICE;
 
     function setUp() public {
@@ -49,7 +48,6 @@ contract MentorMarketplaceTest is Test {
         marketplace.setOracle(oracle, true);
         marketplace.setOracle(proofOracle, true);
 
-        SUB_PRICE = rev.SUBSCRIPTION_PRICE();
         Q_PRICE   = rev.QUERY_PRICE();
 
         vm.deal(mentor,   10 ether);
@@ -143,6 +141,12 @@ contract MentorMarketplaceTest is Test {
             })
         });
         return proofs;
+    }
+
+    function _buyShares(address buyer, uint32 amount) internal {
+        uint256 cost = shares.buyQuote(mentorId, amount);
+        vm.prank(buyer);
+        marketplace.buyShares{value: cost}(mentorId, amount);
     }
 
     // --- Minting ---
@@ -325,51 +329,33 @@ contract MentorMarketplaceTest is Test {
         assertEq(marketplace.getShareBalance(mentorId, curator1), 10);
     }
 
-    // --- Subscriptions & queries ---
-
-    function test_Subscribe() public {
-        vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
-        assertTrue(marketplace.isSubscribed(mentorId, learner));
-    }
-
-    function test_Subscribe_Extends() public {
-        vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
-        uint64 first = rev.subscriptions(mentorId, learner);
-
-        vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
-        uint64 second = rev.subscriptions(mentorId, learner);
-
-        assertEq(second, first + 30 days);
-    }
+    // --- Shareholder-gated queries ---
 
     function test_ExecuteQuery_PayPerQuery() public {
+        _buyShares(learner, 1);
+
         vm.prank(learner);
         marketplace.executeQuery{value: Q_PRICE}(mentorId);
         assertGt(rev.mentorClaimable(mentorId), 0);
     }
 
-    function test_ExecuteQuery_SubscribedFree() public {
+    function test_ExecuteQuery_RevertsIfNotShareholder() public {
         vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
-
-        uint256 before = learner.balance;
-        vm.prank(learner);
-        marketplace.executeQuery{value: 0}(mentorId);
-        assertEq(learner.balance, before);
+        vm.expectRevert("not shareholder");
+        marketplace.executeQuery{value: Q_PRICE}(mentorId);
     }
 
     // --- Revenue distribution ---
 
     function test_Revenue_SplitCorrect() public {
-        vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
+        _buyShares(learner, 1);
 
-        uint256 expectedMentor   = (SUB_PRICE * 6000) / 10000;
-        uint256 expectedCurator  = (SUB_PRICE * 2500) / 10000;
-        uint256 expectedPlatform = SUB_PRICE - expectedMentor - expectedCurator;
+        vm.prank(learner);
+        marketplace.executeQuery{value: Q_PRICE}(mentorId);
+
+        uint256 expectedMentor   = (Q_PRICE * 6000) / 10000;
+        uint256 expectedCurator  = (Q_PRICE * 2500) / 10000;
+        uint256 expectedPlatform = Q_PRICE - expectedMentor - expectedCurator;
 
         assertEq(rev.mentorClaimable(mentorId),  expectedMentor);
         assertEq(rev.curatorPoolTotal(mentorId), expectedCurator);
@@ -385,8 +371,8 @@ contract MentorMarketplaceTest is Test {
         vm.prank(curator2);
         marketplace.buyShares{value: cost2 + 1 ether}(mentorId, 150);
 
-        vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
+        vm.prank(curator1);
+        marketplace.executeQuery{value: Q_PRICE}(mentorId);
 
         uint256 curatorPool = rev.curatorPoolTotal(mentorId);
         uint256 expected1   = (curatorPool * 100) / 1000; // 10%
@@ -397,8 +383,10 @@ contract MentorMarketplaceTest is Test {
     }
 
     function test_MentorRoyaltyClaim() public {
+        _buyShares(learner, 1);
+
         vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
+        marketplace.executeQuery{value: Q_PRICE}(mentorId);
 
         uint256 claimable = rev.mentorClaimable(mentorId);
         uint256 before    = mentor.balance;
@@ -411,8 +399,10 @@ contract MentorMarketplaceTest is Test {
     // --- Vesting ---
 
     function test_VestEarnings_Linear() public {
+        _buyShares(learner, 1);
+
         vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
+        marketplace.executeQuery{value: Q_PRICE}(mentorId);
 
         vm.prank(mentor);
         marketplace.vestEarnings(mentorId);
@@ -427,8 +417,10 @@ contract MentorMarketplaceTest is Test {
     }
 
     function test_VestEarnings_ClaimAfterFullVest() public {
+        _buyShares(learner, 1);
+
         vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
+        marketplace.executeQuery{value: Q_PRICE}(mentorId);
 
         uint256 vested = rev.mentorClaimable(mentorId);
 
@@ -488,8 +480,10 @@ contract MentorMarketplaceTest is Test {
     // --- Clawback ---
 
     function test_Clawback_FailsIfMentorActive() public {
+        _buyShares(learner, 1);
+
         vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
+        marketplace.executeQuery{value: Q_PRICE}(mentorId);
 
         vm.prank(mentor);
         marketplace.vestEarnings(mentorId);
@@ -499,8 +493,10 @@ contract MentorMarketplaceTest is Test {
     }
 
     function test_Clawback_SucceedsAfterStalePeriod() public {
+        _buyShares(learner, 1);
+
         vm.prank(learner);
-        marketplace.subscribe{value: SUB_PRICE}(mentorId);
+        marketplace.executeQuery{value: Q_PRICE}(mentorId);
 
         vm.prank(mentor);
         marketplace.vestEarnings(mentorId);

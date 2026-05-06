@@ -1,17 +1,53 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { isAddress, type Address } from "viem";
+import { useAccount, useWriteContract } from "wagmi";
+
+import { shortAddress, useSecurityEvents } from "@/hooks/useMarketplace";
+import { api } from "@/lib/api";
+import { INFT_ADDRESS, inftAbi } from "@/lib/contracts";
+
 import { subtleButtonClass } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function SecurityView() {
-  const logs = [
+  const { address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const { data: securityEvents = [] } = useSecurityEvents();
+  const [transferMode, setTransferMode] = useState<"transfer" | "clone" | null>(null);
+  const [tokenId, setTokenId] = useState("");
+  const [mentorId, setMentorId] = useState("");
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const fallbackLogs = [
     ["⛨", "TEE_ATTESTED", "IndoRegulator_01 query session", "0x7F...91A2", "NODE_01", "VERIFIED", "2 min ago"],
     ["✎", "E_SIGN_REF", "Mentor consent package attached", "ESG-4491", "ESIGN_SVC", "INFO", "18 min ago"],
     ["▱", "STORAGE_COMMIT", "0G log archival hash pinned", "0xA1...CC04", "STORAGE_N1", "INFO", "41 min ago"],
-    ["▣", "ACCESS_CHECK", "Subscriber pass validated", "0x09...88FE", "ACCESS_SVC", "LOW", "1 hr ago"],
+    ["▣", "ACCESS_CHECK", "Shareholder pass validated", "0x09...88FE", "ACCESS_SVC", "LOW", "1 hr ago"],
     ["⇄", "INFT_TRANSFER_DRYRUN", "Ownership handoff proof simulated", "0x44...D902", "INFT_SVC", "LOW", "3 hr ago"],
     ["⬡", "ENCLAVE_BOOT", "TEE enclave boot verified", "0x2B...7EF1", "ENCLAVE_N1", "VERIFIED", "3 hr ago"],
     ["▤", "POLICY_UPDATE", "Access policy rule set updated", "POL-7731", "POLICY_SVC", "MEDIUM", "6 hr ago"],
     ["⌁", "KEY_ROTATION", "Data encryption key rotated", "0x8C...AA31", "KEY_MGR", "INFO", "9 hr ago"],
+  ];
+  const logs =
+    securityEvents.length > 0
+      ? securityEvents.slice(0, 8).map((event) => [
+          event.type === "Transfer" ? "⇄" : "▱",
+          event.type === "Transfer" ? "INFT_TRANSFER" : "STORAGE_COMMIT",
+          `Mentor #${event.tokenId} ${event.detail}`,
+          shortAddress(event.txHash),
+          "INFT_SC",
+          "VERIFIED",
+          `Block ${event.blockNumber.toString()}`,
+        ])
+      : fallbackLogs;
+  const securityStats = [
+    ["⛨", "Audit Events", securityEvents.length > 0 ? String(securityEvents.length) : "12.8K", "↑ 18.4% vs last 24h", "#2dd4bf"],
+    ["⛨", "TEE Verified", "99.2%", "↑ 0.6% vs last 24h", "#2dd4bf"],
+    ["△", "Failed Checks", "7", "↓ -12.5% vs last 24h", "#ef4444"],
+    ["◔", "Avg Response SLA", "142ms", "↓ -8.7% vs last 24h", "#2dd4bf"],
   ];
 
   const severityClass: Record<string, string> = {
@@ -25,12 +61,7 @@ export default function SecurityView() {
   return (
     <div className="security-reference">
       <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["⛨", "Audit Events", "12.8K", "↑ 18.4% vs last 24h", "#2dd4bf"],
-          ["⛨", "TEE Verified", "99.2%", "↑ 0.6% vs last 24h", "#2dd4bf"],
-          ["△", "Failed Checks", "7", "↓ -12.5% vs last 24h", "#ef4444"],
-          ["◔", "Avg Response SLA", "142ms", "↓ -8.7% vs last 24h", "#2dd4bf"],
-        ].map(([icon, label, value, trend, color]) => (
+        {securityStats.map(([icon, label, value, trend, color]) => (
           <div key={label} className={`${panelClass} rounded-[7px] p-4`}>
             <div className="flex items-start gap-4">
               <span className="mt-0.5 shrink-0 text-[56px] leading-none" style={{ color }}>{icon}</span>
@@ -144,6 +175,10 @@ export default function SecurityView() {
             <div className="mt-3 flex justify-between text-[9px] text-[#707b89]">
               <span>0%</span><span>50%</span><span>100%</span>
             </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`} onClick={() => setTransferMode("transfer")} type="button">TRANSFER INFT</button>
+              <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`} onClick={() => setTransferMode("clone")} type="button">CLONE INFT</button>
+            </div>
           </div>
 
           <div className={`${panelClass} rounded-[7px] p-4`}>
@@ -183,7 +218,7 @@ export default function SecurityView() {
                 ["TEE attestation verified for NODE_01", "2 min ago"],
                 ["Mentor consent package signed", "18 min ago"],
                 ["Storage commit successful", "41 min ago"],
-                ["Subscriber access validated", "1 hr ago"],
+                ["Shareholder access validated", "1 hr ago"],
                 ["Policy rule set updated", "6 hr ago"],
               ].map(([title, time]) => (
                 <div key={title} className="relative mb-4 flex items-center justify-between gap-3 text-[10px]">
@@ -196,6 +231,39 @@ export default function SecurityView() {
           </div>
         </div>
       </div>
+      {transferMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <form
+            className={`${panelClass} w-full max-w-[500px] rounded-[7px] p-4`}
+            onSubmit={async (event: FormEvent) => {
+              event.preventDefault();
+              if (!isAddress(to)) return;
+              setBusy(true);
+              const body = { mentorId, tokenId: Number(tokenId), from: address, to };
+              const proof = transferMode === "transfer" ? await api.signTransfer(body) : await api.signClone(body);
+              await writeContractAsync({
+                address: INFT_ADDRESS,
+                abi: inftAbi,
+                functionName: transferMode === "transfer" ? "iTransfer" : "iClone",
+                args: [to as Address, BigInt(tokenId), proof.proofs as never],
+              });
+              setBusy(false);
+              setTransferMode(null);
+            }}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">{transferMode === "transfer" ? "Transfer INFT" : "Clone INFT"}</h2>
+              <button className="text-[#8b95a3]" onClick={() => setTransferMode(null)} type="button">×</button>
+            </div>
+            <div className="space-y-3">
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Mentor ID / key namespace" required value={mentorId} onChange={(event) => setMentorId(event.target.value)} />
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Token ID" required value={tokenId} onChange={(event) => setTokenId(event.target.value)} />
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Destination address" required value={to} onChange={(event) => setTo(event.target.value)} />
+              <button className={`${subtleButtonClass} w-full px-3 py-2.5 text-[10px]`} disabled={busy || !isAddress(to)} type="submit">{busy ? "SIGNING PROOF..." : "REQUEST ORACLE PROOF"}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
