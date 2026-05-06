@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
 const RPC_URL =
-  process.env.ZG_RPC_URL ?? "https://evmrpc-testnet.0g.ai";
+  process.env.ZG_RPC_URL ?? "https://evmrpc.0g.ai";
 
 // Minimal ABI — hanya fungsi yang dipakai backend oracle
 const INFT_ABI = [
@@ -11,7 +11,7 @@ const INFT_ABI = [
   "function resolveGap(uint256 tokenId) external",
   "function updateConfidence(uint256 tokenId, uint8 score) external",
   "function recordQuery(uint256 tokenId) external",
-  "function mentors(uint256 tokenId) external view returns (address creator, string storageRef, string name, string category, uint8 confidenceScore, uint32 gapCount, uint32 totalQueries, uint8 status, uint64 lastUpdatedAt, uint64 mintedAt)",
+  "function mentors(uint256 tokenId) external view returns ((address creator, string storageRef, string name, string category, uint8 confidenceScore, uint32 gapCount, uint32 totalQueries, uint8 status, uint64 lastUpdatedAt, uint64 mintedAt))",
   "function setOracle(address oracle, bool enabled) external",
 ];
 

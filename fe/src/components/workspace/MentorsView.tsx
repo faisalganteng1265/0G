@@ -22,67 +22,24 @@ export default function MentorsView() {
   const [uploadText, setUploadText] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [modalBusy, setModalBusy] = useState(false);
-  const fallbackMentors = [
-    {
-      name: "IndoRegulator_01",
-      status: "DRAFT" as const,
-      category: "Regulatory Playbook",
-      categoryColor: "#4ade80",
-      description: "Cross-border regulatory frameworks, licensing paths, and compliance models.",
-      docs: 78,
-      gaps: 12,
-      confidence: 88,
-      updatedAgo: "2h ago",
-      version: "v0.3.2",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
-    },
-    {
-      name: "ExportOps_APAC",
-      status: "REVIEW" as const,
-      category: "Cross-border Operations",
-      categoryColor: "#2dd4bf",
-      description: "Export compliance, customs, and logistics operations across APAC.",
-      docs: 31,
-      gaps: 4,
-      confidence: 76,
-      updatedAgo: "1d ago",
-      version: "v0.2.1",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
-    },
-    {
-      name: "DeFiTax_Advisor",
-      status: "READY" as const,
-      category: "Crypto Tax Tactics",
-      categoryColor: "#2dd4bf",
-      description: "On-chain tax strategies, reporting frameworks, and audit defenses.",
-      docs: 19,
-      gaps: 0,
-      confidence: 96,
-      updatedAgo: "3d ago",
-      version: "v1.0.0",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
-    },
+  const mentorImages = [
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
   ];
-  const mentors =
-    onchainMentors.length > 0
-      ? onchainMentors.map((mentor, index) => ({
-          name: mentor.name,
-          status: (mentor.status === 2 ? "READY" : mentor.status === 1 ? "REVIEW" : "DRAFT") as "DRAFT" | "REVIEW" | "READY",
-          category: mentor.category,
-          categoryColor: index % 2 === 0 ? "#4ade80" : "#2dd4bf",
-          description: mentor.storageRef || "Encrypted 0G Storage reference pending.",
-          docs: mentor.totalQueries,
-          gaps: mentor.gapCount,
-          confidence: mentor.confidenceScore,
-          updatedAgo: mentor.lastUpdatedAt ? new Date(mentor.lastUpdatedAt * 1000).toLocaleDateString() : "-",
-          version: `#${mentor.tokenId}`,
-          tokenId: mentor.tokenId,
-          image: fallbackMentors[index % fallbackMentors.length].image,
-        }))
-      : fallbackMentors;
+  const mentors = onchainMentors.map((mentor, index) => ({
+    name: mentor.name,
+    status: (mentor.status === 2 ? "READY" : mentor.status === 1 ? "REVIEW" : "DRAFT") as "DRAFT" | "REVIEW" | "READY",
+    category: mentor.category,
+    categoryColor: index % 2 === 0 ? "#4ade80" : "#2dd4bf",
+    description: mentor.storageRef || "Knowledge upload pending.",
+    docs: mentor.totalQueries,
+    gaps: mentor.gapCount,
+    confidence: mentor.confidenceScore,
+    updatedAgo: mentor.lastUpdatedAt ? new Date(mentor.lastUpdatedAt * 1000).toLocaleDateString() : "-",
+    version: `#${mentor.tokenId}`,
+    tokenId: mentor.tokenId,
+    image: mentorImages[index % mentorImages.length],
+  }));
 
   async function mintMentor(event: FormEvent) {
     event.preventDefault();
@@ -274,6 +231,11 @@ export default function MentorsView() {
           </div>
 
           <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.12)] bg-[rgba(3,8,10,0.36)]">
+            {mentors.length === 0 && (
+              <div className="px-4 py-10 text-center text-[11px] text-[#4b5563]">
+                No mentors yet. Click &quot;PREVIEW MINT FLOW&quot; to register your first mentor.
+              </div>
+            )}
             {mentors.map((mentor) => (
               <div key={mentor.name} className="border-b border-[rgba(96,165,250,0.13)] p-3 last:border-b-0">
                 <div className="grid gap-3 md:grid-cols-[72px_minmax(0,1fr)_270px]">
@@ -462,7 +424,19 @@ export default function MentorsView() {
               <button className="text-[#8b95a3]" onClick={() => setIsUploadOpen(false)} type="button">×</button>
             </div>
             <div className="space-y-3">
-              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Token ID" required value={uploadTokenId} onChange={(event) => setUploadTokenId(event.target.value)} />
+              <select
+                className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none"
+                required
+                value={uploadTokenId}
+                onChange={(event) => setUploadTokenId(event.target.value)}
+              >
+                <option value="">— Select mentor —</option>
+                {mentors.map((m) => (
+                  <option key={m.tokenId} value={String(m.tokenId)}>
+                    {m.name} (#{m.tokenId})
+                  </option>
+                ))}
+              </select>
               <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-[#8b95a3]" type="file" onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)} />
               <textarea className="min-h-32 w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Or paste knowledge text" value={uploadText} onChange={(event) => setUploadText(event.target.value)} />
               <button className={`w-full py-2.5 text-[10px] ${solidAccentBtn}`} disabled={modalBusy || (!uploadFile && !uploadText.trim())} type="submit">{modalBusy ? "UPLOADING..." : "UPLOAD TO 0G STORAGE"}</button>

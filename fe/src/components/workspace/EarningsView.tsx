@@ -1,9 +1,10 @@
 "use client";
 
-import { useAccount, useWriteContract } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
+import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 
 import { formatOg, useMentorClaimable, useMentors, useVestingProgress } from "@/hooks/useMarketplace";
-import { MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
+import { hasMarketplaceAddress, MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
 
 import { subtleButtonClass, solidAccentBtn } from "./shared";
 
@@ -13,32 +14,69 @@ export default function EarningsView() {
   const { address } = useAccount();
   const { data: mentors = [] } = useMentors();
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
   const myMentors = address ? mentors.filter((mentor) => mentor.creator.toLowerCase() === address.toLowerCase()) : [];
+
+  // Batch fetch claimable royalty for all mentors I own
+  const { data: claimableResults } = useReadContracts({
+    contracts: myMentors.map((mentor) => ({
+      address: MARKETPLACE_ADDRESS,
+      abi: marketplaceAbi,
+      functionName: "getMentorClaimable" as const,
+      args: [BigInt(mentor.tokenId)],
+    })),
+    query: { enabled: myMentors.length > 0 && hasMarketplaceAddress },
+  });
+
+  const totalClaimable = claimableResults
+    ? claimableResults.reduce((sum, r) => sum + ((r.result as bigint | undefined) ?? BigInt(0)), BigInt(0))
+    : BigInt(0);
+
+  // Total queries across all my mentors → estimate of revenue generated
+  const totalQueries = myMentors.reduce((sum, m) => sum + m.totalQueries, 0);
+
+  // Read MentorRoyaltyClaimed events for current user's mentors
+  const { data: payoutEvents = [] } = useQuery({
+    queryKey: ["payout-events", address, MARKETPLACE_ADDRESS],
+    enabled: Boolean(publicClient && address && hasMarketplaceAddress),
+    queryFn: async () => {
+      if (!publicClient || !address) return [];
+      const currentBlock = await publicClient.getBlockNumber();
+      const fromBlock = currentBlock > BigInt(100_000) ? currentBlock - BigInt(100_000) : BigInt(0);
+      const logs = await publicClient.getLogs({
+        address: MARKETPLACE_ADDRESS,
+        event: marketplaceAbi[2] as never, // MentorRoyaltyClaimed event
+        fromBlock,
+        toBlock: "latest",
+      });
+      return logs
+        .filter((log: any) => log.args?.mentor?.toLowerCase() === address.toLowerCase())
+        .map((log: any) => ({
+          mentorId: Number(log.args?.mentorId ?? 0),
+          amount: (log.args?.amount as bigint) ?? BigInt(0),
+          txHash: log.transactionHash as string,
+          blockNumber: log.blockNumber as bigint,
+        }))
+        .sort((a: any, b: any) => Number(b.blockNumber - a.blockNumber));
+    },
+  });
+
   const statCards = [
-    ["◎", "Gross Revenue", "12,840 OG", "Share access + pay-per-query", "▲ 12.4% vs last 30 days"],
-    ["♕", "Mentor Royalty", "7,704 OG", "Lifetime royalty share", "▲ 9.8% vs last 30 days"],
-    ["♣", "Curator Pool", "3,210 OG", "Pro-rata usage rewards", "▲ 7.2% vs last 30 days"],
-    ["▱", "Platform Fee", "1,926 OG", "Operational fee allocation", "▲ 5.4% vs last 30 days"],
+    ["◎", "Total Queries", String(totalQueries), "Across all my mentors", "on-chain"],
+    ["♕", "Mentor Royalty", formatOg(totalClaimable), "Claimable now", "from contract"],
+    ["♣", "Payout Events", String(payoutEvents.length), "Historical claims", "on-chain logs"],
+    ["▱", "Active Mentors", String(myMentors.length), "Mentors I own", "registered"],
   ];
 
-  const fallbackVestingRows = [
-    ["IndoRegulator_01", "Regulatory Watchdog", "18 days", "Jun 18, 2026", "2,910 OG", "65%"],
-    ["ExportOps_APAC", "APAC Trade Intelligence", "24 days", "Jun 24, 2026", "1,108 OG", "42%"],
-    ["DeFiTax_Advisor", "Defi Tax Optimizer", "7 days", "Jun 7, 2026", "842 OG", "83%"],
-    ["AuditGuardian_Pro", "Onchain Audit Monitor", "36 days", "Jul 6, 2026", "654 OG", "28%"],
-  ];
-  const vestingRows =
-    myMentors.length > 0
-      ? myMentors.map((mentor) => [
-          mentor.name,
-          mentor.category,
-          "30 days",
-          mentor.lastUpdatedAt ? new Date((mentor.lastUpdatedAt + 30 * 24 * 60 * 60) * 1000).toLocaleDateString() : "-",
-          "On-chain",
-          "0%",
-          String(mentor.tokenId),
-        ])
-      : fallbackVestingRows;
+  const vestingRows = myMentors.map((mentor) => [
+    mentor.name,
+    mentor.category,
+    "30 days",
+    mentor.lastUpdatedAt ? new Date((mentor.lastUpdatedAt + 30 * 24 * 60 * 60) * 1000).toLocaleDateString() : "-",
+    "On-chain",
+    "0%",
+    String(mentor.tokenId),
+  ]);
 
   async function claimFirstRoyalty() {
     const tokenId = myMentors[0]?.tokenId;
@@ -126,22 +164,21 @@ export default function EarningsView() {
           <div className="grid items-center gap-5 md:grid-cols-[170px_1fr]">
             <div className="relative h-[170px] w-[170px] rounded-full bg-[conic-gradient(#2dd4bf_0_60%,#67e8f9_60%_85%,#475569_85%_100%)] p-[28px]">
               <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#071014] text-center">
-                <span className="text-[18px] font-bold text-white">12,840</span>
-                <span className="text-[13px] font-bold text-white">OG</span>
-                <span className="mt-1 text-[9px] uppercase tracking-[0.12em] text-[#707b89]">Total</span>
+                <span className="text-[13px] font-bold text-white">{formatOg(totalClaimable)}</span>
+                <span className="mt-1 text-[9px] uppercase tracking-[0.12em] text-[#707b89]">Claimable</span>
               </div>
             </div>
             <div>
               {[
-                ["#2dd4bf", "Mentor royalty", "7,704 OG", "60%"],
-                ["#67e8f9", "Curator rewards", "3,210 OG", "25%"],
-                ["#64748b", "Platform fee", "1,926 OG", "15%"],
+                ["#2dd4bf", "Mentor royalty", "60%", "60%"],
+                ["#67e8f9", "Curator rewards", "25%", "25%"],
+                ["#64748b", "Platform fee", "15%", "15%"],
               ].map(([color, label, value, pct]) => (
                 <div key={label} className="grid grid-cols-[14px_1fr_auto] items-center gap-3 border-b border-[rgba(96,165,250,0.14)] py-3 last:border-b-0">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
                   <span>
                     <span className="block text-[11px] text-[#d1d5db]">{label}</span>
-                    <span className="text-[10px] text-[#707b89]">{value}</span>
+                    <span className="text-[10px] text-[#707b89]">Protocol constant</span>
                   </span>
                   <span className="text-[12px] font-bold text-white">{pct}</span>
                 </div>
@@ -151,26 +188,20 @@ export default function EarningsView() {
           <p className="mt-5 text-[10px] text-[#707b89]">Distribution based on protocol rules and usage.</p>
 
           <div className="mt-5 border-t border-[rgba(96,165,250,0.12)] pt-4">
-            <p className="mb-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">REVENUE SOURCES</p>
-            {(
-              [
-                ["#2dd4bf", "Share access", "8,732 OG", "68%"],
-                ["#67e8f9", "Pay-per-query", "4,108 OG", "32%"],
-              ] as [string, string, string, string][]
-            ).map(([color, label, value, pct]) => (
-              <div key={label} className="mb-3 last:mb-0">
+            <p className="mb-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">MY MENTORS</p>
+            {myMentors.length === 0 ? (
+              <p className="text-[11px] text-[#4b5563]">No mentors registered yet.</p>
+            ) : myMentors.map((mentor) => (
+              <div key={mentor.tokenId} className="mb-3 last:mb-0">
                 <div className="mb-1.5 flex items-center justify-between text-[10px]">
                   <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-                    <span className="text-[#d1d5db]">{label}</span>
+                    <span className="h-2 w-2 rounded-full bg-[#2dd4bf]" />
+                    <span className="text-[#d1d5db]">{mentor.name}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#8b95a3]">{value}</span>
-                    <span className="w-7 text-right font-bold text-white">{pct}</span>
-                  </div>
+                  <span className="font-bold text-white">{mentor.totalQueries} queries</span>
                 </div>
                 <div className="h-[4px] rounded-full bg-[rgba(96,165,250,0.14)]">
-                  <div className="h-[4px] rounded-full" style={{ width: pct, backgroundColor: color }} />
+                  <div className="h-[4px] rounded-full bg-[#2dd4bf]" style={{ width: `${mentor.confidenceScore}%` }} />
                 </div>
               </div>
             ))}
@@ -183,7 +214,7 @@ export default function EarningsView() {
               <span className="text-[18px]">▣</span>
               <h2 className="text-[12px] font-bold uppercase tracking-[0.12em]">Claimable Rewards</h2>
             </div>
-            <p className="text-center text-[26px] font-bold text-white">842 OG</p>
+            <p className="text-center text-[26px] font-bold text-white">{formatOg(totalClaimable)}</p>
             <p className="mt-3 text-center text-[11px] text-[#d1d5db]">Available to claim</p>
           </div>
           <div className="p-4">
@@ -202,7 +233,9 @@ export default function EarningsView() {
           <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] gap-3 border-b border-[rgba(96,165,250,0.14)] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">
             <span>Mentor / Package</span><span>Unlocks In</span><span>Amount</span><span>Progress</span><span>Claim Date</span>
           </div>
-          {vestingRows.map(([mentor, subtitle, unlock, date, amount, progress, tokenId], index) => (
+          {vestingRows.length === 0 ? (
+            <div className="py-8 text-center text-[11px] text-[#4b5563]">No mentors found. Register a mentor first.</div>
+          ) : vestingRows.map(([mentor, subtitle, unlock, date, amount, progress, tokenId], index) => (
             <VestingRow key={mentor} row={{ mentor, subtitle, unlock, date, amount, progress, tokenId }} index={index} />
           ))}
           <button className="mt-4 flex w-full items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">VIEW ALL VESTING <span>›</span></button>
@@ -216,23 +249,22 @@ export default function EarningsView() {
           <div className="grid grid-cols-[1fr_1fr_0.6fr_0.7fr] gap-3 border-b border-[rgba(96,165,250,0.14)] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">
             <span>Event</span><span>Source</span><span>Time</span><span className="text-right">Amount</span>
           </div>
-          {[
-            ["♕", "Mentor Royalty", "IndoRegulator_01", "2h ago", "+412 OG"],
-            ["♧", "Curator Reward", "ExportOps_APAC", "5h ago", "+231 OG"],
-            ["♕", "Mentor Royalty", "DeFiTax_Advisor", "1d ago", "+318 OG"],
-            ["◎", "Platform Fee Allocation", "Protocol", "1d ago", "+147 OG"],
-            ["♧", "Curator Reward", "AuditGuardian_Pro", "2d ago", "+164 OG"],
-          ].map(([icon, event, source, time, amount]) => (
-            <div key={`${event}-${source}-${time}`} className="grid grid-cols-[1fr_1fr_0.6fr_0.7fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#2dd4bf]/30 bg-[#2dd4bf]/10 text-[#2dd4bf]">{icon}</span>
-                <span className="text-[#d1d5db]">{event}</span>
+          {payoutEvents.length === 0 ? (
+            <div className="py-8 text-center text-[11px] text-[#4b5563]">No payout events yet. Claim royalties to see activity here.</div>
+          ) : payoutEvents.slice(0, 5).map((event) => {
+            const mentor = mentors.find((m) => m.tokenId === event.mentorId);
+            return (
+              <div key={event.txHash} className="grid grid-cols-[1fr_1fr_0.6fr_0.7fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#2dd4bf]/30 bg-[#2dd4bf]/10 text-[#2dd4bf]">♕</span>
+                  <span className="text-[#d1d5db]">Mentor Royalty</span>
+                </div>
+                <span className="text-[#8b95a3]">{mentor?.name ?? `Mentor #${event.mentorId}`}</span>
+                <span className="text-[#8b95a3]">Block {event.blockNumber.toString()}</span>
+                <span className="text-right font-bold text-[#2dd4bf]">+{formatOg(event.amount)}</span>
               </div>
-              <span className="text-[#8b95a3]">{source}</span>
-              <span className="text-[#8b95a3]">{time}</span>
-              <span className="text-right font-bold text-[#2dd4bf]">{amount}</span>
-            </div>
-          ))}
+            );
+          })}
           <button className="mt-4 flex w-full items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">VIEW ALL ACTIVITY <span>›</span></button>
         </div>
       </div>

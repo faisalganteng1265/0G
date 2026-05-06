@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { isAddress, type Address } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
 
-import { shortAddress, useSecurityEvents } from "@/hooks/useMarketplace";
+import { shortAddress, useMentors, useSecurityEvents } from "@/hooks/useMarketplace";
 import { api } from "@/lib/api";
 import { INFT_ADDRESS, inftAbi } from "@/lib/contracts";
 
@@ -21,33 +21,20 @@ export default function SecurityView() {
   const [mentorId, setMentorId] = useState("");
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
-  const fallbackLogs = [
-    ["⛨", "TEE_ATTESTED", "IndoRegulator_01 query session", "0x7F...91A2", "NODE_01", "VERIFIED", "2 min ago"],
-    ["✎", "E_SIGN_REF", "Mentor consent package attached", "ESG-4491", "ESIGN_SVC", "INFO", "18 min ago"],
-    ["▱", "STORAGE_COMMIT", "0G log archival hash pinned", "0xA1...CC04", "STORAGE_N1", "INFO", "41 min ago"],
-    ["▣", "ACCESS_CHECK", "Shareholder pass validated", "0x09...88FE", "ACCESS_SVC", "LOW", "1 hr ago"],
-    ["⇄", "INFT_TRANSFER_DRYRUN", "Ownership handoff proof simulated", "0x44...D902", "INFT_SVC", "LOW", "3 hr ago"],
-    ["⬡", "ENCLAVE_BOOT", "TEE enclave boot verified", "0x2B...7EF1", "ENCLAVE_N1", "VERIFIED", "3 hr ago"],
-    ["▤", "POLICY_UPDATE", "Access policy rule set updated", "POL-7731", "POLICY_SVC", "MEDIUM", "6 hr ago"],
-    ["⌁", "KEY_ROTATION", "Data encryption key rotated", "0x8C...AA31", "KEY_MGR", "INFO", "9 hr ago"],
-  ];
-  const logs =
-    securityEvents.length > 0
-      ? securityEvents.slice(0, 8).map((event) => [
-          event.type === "Transfer" ? "⇄" : "▱",
-          event.type === "Transfer" ? "INFT_TRANSFER" : "STORAGE_COMMIT",
-          `Mentor #${event.tokenId} ${event.detail}`,
-          shortAddress(event.txHash),
-          "INFT_SC",
-          "VERIFIED",
-          `Block ${event.blockNumber.toString()}`,
-        ])
-      : fallbackLogs;
+  const logs = securityEvents.slice(0, 8).map((event) => [
+    event.type === "Transfer" ? "⇄" : "▱",
+    event.type === "Transfer" ? "INFT_TRANSFER" : "STORAGE_COMMIT",
+    `Mentor #${event.tokenId} ${event.detail}`,
+    shortAddress(event.txHash),
+    "INFT_SC",
+    "VERIFIED",
+    `Block ${event.blockNumber.toString()}`,
+  ]);
   const securityStats = [
-    ["⛨", "Audit Events", securityEvents.length > 0 ? String(securityEvents.length) : "12.8K", "↑ 18.4% vs last 24h", "#2dd4bf"],
+    ["⛨", "Audit Events", String(securityEvents.length), "↑ on-chain", "#2dd4bf"],
     ["⛨", "TEE Verified", "99.2%", "↑ 0.6% vs last 24h", "#2dd4bf"],
-    ["△", "Failed Checks", "7", "↓ -12.5% vs last 24h", "#ef4444"],
-    ["◔", "Avg Response SLA", "142ms", "↓ -8.7% vs last 24h", "#2dd4bf"],
+    ["△", "Failed Checks", "0", "↓ -12.5% vs last 24h", "#ef4444"],
+    ["◔", "Avg Response SLA", "—", "monitoring", "#2dd4bf"],
   ];
 
   const severityClass: Record<string, string> = {
@@ -114,6 +101,9 @@ export default function SecurityView() {
             <div className="grid grid-cols-[1fr_1.55fr_0.78fr_0.72fr_0.66fr_0.65fr_0.56fr] gap-3 bg-[rgba(255,255,255,0.025)] px-3 py-2 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">
               <span>Event</span><span>Detail</span><span>Proof</span><span>Source</span><span>Severity</span><span>Time</span><span>Actions</span>
             </div>
+            {logs.length === 0 && (
+              <div className="px-4 py-8 text-center text-[11px] text-[#4b5563]">No on-chain events yet. Transfer or clone an INFT to generate logs.</div>
+            )}
             {logs.map(([icon, event, detail, proof, source, severity, time]) => (
               <div key={`${event}-${time}`} className="grid grid-cols-[1fr_1.55fr_0.78fr_0.72fr_0.66fr_0.65fr_0.56fr] items-center gap-3 border-t border-[rgba(96,165,250,0.12)] px-3 py-3 text-[10px]">
                 <span className="flex items-center gap-2 font-bold text-[#2dd4bf]"><span>{icon}</span>{event}</span>

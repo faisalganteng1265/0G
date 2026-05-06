@@ -9,36 +9,26 @@ const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 export default function GapsView() {
   const { data: gapEvents = [] } = useGapEvents();
   const { data: mentors = [] } = useMentors();
-  const fallbackGaps = [
-    ["OSS licensing for foreign-owned PMA", "IndoRegulator_01", "Compliance", "CRITICAL", "28%", "21", "2h ago", "High severity"],
-    ["MiCA stablecoin reserve carve-out", "QuantAlpha_7", "Regulation", "HIGH", "41%", "9", "4h ago", "High severity"],
-    ["Proxy upgrade incident pattern", "CyberSec_V2", "Security", "MEDIUM", "56%", "5", "6h ago", "Moderate severity"],
-    ["Cross-chain bridge risk heuristics", "ChainIntel_3", "Security", "LOW", "72%", "7", "8h ago", "Low severity"],
-    ["DAO treasury diversification models", "DeFiSage_01", "Finance", "LOW", "78%", "6", "10h ago", "Low severity"],
-  ];
-  const gaps =
-    gapEvents.length > 0
-      ? gapEvents.slice(0, 5).map((event) => {
-          const mentor = mentors.find((item) => item.tokenId === event.tokenId);
-          const priority = event.count > 20 ? "CRITICAL" : event.count > 10 ? "HIGH" : event.count > 3 ? "MEDIUM" : "LOW";
-          const confidence = Math.max(20, 100 - event.count * 4);
-          return [
-            event.type === "GapResolved" ? "Gap resolved by oracle" : "Low-confidence answer detected",
-            mentor?.name ?? `Mentor #${event.tokenId}`,
-            mentor?.category ?? "Oracle",
-            priority,
-            `${confidence}%`,
-            String(event.count),
-            `Block ${event.blockNumber.toString()}`,
-            priority === "LOW" ? "Low severity" : priority === "MEDIUM" ? "Moderate severity" : "High severity",
-          ];
-        })
-      : fallbackGaps;
-  const totalOpenGaps = mentors.reduce((sum, mentor) => sum + mentor.gapCount, 0) || 128;
-  const criticalGaps = gaps.filter((gap) => gap[3] === "CRITICAL").length || 24;
+  const gaps = gapEvents.slice(0, 5).map((event) => {
+    const mentor = mentors.find((item) => item.tokenId === event.tokenId);
+    const priority = event.count > 20 ? "CRITICAL" : event.count > 10 ? "HIGH" : event.count > 3 ? "MEDIUM" : "LOW";
+    const confidence = Math.max(20, 100 - event.count * 4);
+    return [
+      event.type === "GapResolved" ? "Gap resolved by oracle" : "Low-confidence answer detected",
+      mentor?.name ?? `Mentor #${event.tokenId}`,
+      mentor?.category ?? "Oracle",
+      priority,
+      `${confidence}%`,
+      String(event.count),
+      `Block ${event.blockNumber.toString()}`,
+      priority === "LOW" ? "Low severity" : priority === "MEDIUM" ? "Moderate severity" : "High severity",
+    ];
+  });
+  const totalOpenGaps = mentors.reduce((sum, mentor) => sum + mentor.gapCount, 0);
+  const criticalGaps = gaps.filter((gap) => gap[3] === "CRITICAL").length;
   const gapStats = [
-    ["◎", "Total Open Gaps", String(totalOpenGaps), gapEvents.length > 0 ? `${gapEvents.length} events` : "↗ 18", "vs yesterday", "#2dd4bf"],
-    ["△", "Critical Priority", String(criticalGaps), gapEvents.length > 0 ? "live events" : "18.7% of total", "", "#fb7185"],
+    ["◎", "Total Open Gaps", String(totalOpenGaps), `${gapEvents.length} events`, "on-chain", "#2dd4bf"],
+    ["△", "Critical Priority", String(criticalGaps), "live events", "", "#fb7185"],
     ["♧", "Avg Confidence Recovery", "+21.4%", "30d trend", "spark", "#2dd4bf"],
     ["♧", "Pending Reviews", String(Math.max(totalOpenGaps - criticalGaps, 0)), "Needs attention", "", "#2dd4bf"],
   ];
@@ -125,6 +115,9 @@ export default function GapsView() {
             <div className="grid grid-cols-[1.75fr_0.7fr_0.65fr_0.65fr_0.5fr_0.65fr_0.8fr_0.78fr] gap-3 bg-[rgba(255,255,255,0.025)] px-3 py-2 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">
               <span>Gap / Source</span><span>Category</span><span>Priority</span><span>Confidence</span><span>Queries</span><span>Last Updated</span><span>Severity</span><span>Actions</span>
             </div>
+            {gaps.length === 0 && (
+              <div className="px-4 py-8 text-center text-[11px] text-[#4b5563]">No gap events detected on-chain yet.</div>
+            )}
             {gaps.map(([title, mentor, category, priority, confidence, queries, updated, severity]) => {
               const numericConfidence = Number(confidence.replace("%", ""));
               return (

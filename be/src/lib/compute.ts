@@ -6,18 +6,20 @@ import {
 import { ethers } from "ethers";
 
 const RPC_URL =
-  process.env.ZG_RPC_URL ?? "https://evmrpc-testnet.0g.ai";
+  process.env.ZG_RPC_URL ?? "https://evmrpc.0g.ai";
 
-// Contract addresses — default ke Galileo testnet, override via env jika perlu
+// Contract addresses default ke 0G Aristotle mainnet, override via env jika perlu.
 const LEDGER_CA =
   process.env.ZG_COMPUTE_LEDGER_CA ??
-  "0xE70830508dAc0A97e6c087c75f402f9Be669E406";
+  "0x2dE54c845Cd948B72D2e32e39586fe89607074E3";
 const INFERENCE_CA =
   process.env.ZG_COMPUTE_INFERENCE_CA ??
-  "0xa79F4c8311FF93C06b8CfB403690cc987c93F91E";
+  "0x47340d900bdFec2BD393c626E12ea0656F938d84";
 const FINE_TUNING_CA =
   process.env.ZG_COMPUTE_FINE_TUNING_CA ??
-  "0xC6C075D8039763C8f1EbE580be5ADdf2fd6941bA";
+  "0x4e3474095518883744ddf135b7E0A23301c7F9c0";
+const MIN_LEDGER_CREATION_DEPOSIT_OG = 3;
+const MIN_PROVIDER_BALANCE = ethers.parseEther("2");
 
 function getSigner() {
   if (!process.env.ORACLE_PRIVATE_KEY)
@@ -34,7 +36,8 @@ async function createBroker() {
     INFERENCE_CA,
     FINE_TUNING_CA
   );
-  return createInferenceBroker(signer, INFERENCE_CA, ledger);
+  const broker = await createInferenceBroker(signer, INFERENCE_CA, ledger);
+  return { broker, ledger };
 }
 
 export interface ServiceInfo {
@@ -67,9 +70,97 @@ function toServiceInfo(s: InferenceServiceStructOutput): ServiceInfo {
   };
 }
 
+function parseOgAmount(value: string | undefined, fallback: string): bigint {
+  return ethers.parseEther(value && value.trim().length > 0 ? value : fallback);
+}
+
+function parseOgNumber(value: string | undefined, fallback: string): number {
+  const parsed = Number(value && value.trim().length > 0 ? value : fallback);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Invalid 0G amount: ${value}`);
+  }
+  return parsed;
+}
+
+function maxOgNumber(...values: number[]): number {
+  return Math.max(...values.map((value) => Number(value.toFixed(18))));
+}
+
+async function ensureProviderFunded(
+  ctx: Awaited<ReturnType<typeof createBroker>>,
+  provider: string
+) {
+  if (process.env.ZG_COMPUTE_AUTO_FUND === "false") return;
+
+  const configuredProviderFund = parseOgAmount(
+    process.env.ZG_COMPUTE_PROVIDER_FUND_OG,
+    "2"
+  );
+  const targetBalance =
+    configuredProviderFund < MIN_PROVIDER_BALANCE
+      ? MIN_PROVIDER_BALANCE
+      : configuredProviderFund;
+
+  let lockedBalance = 0n;
+  try {
+    const account = await ctx.broker.getAccount(provider);
+    lockedBalance = account.balance - account.pendingRefund;
+  } catch {
+    lockedBalance = 0n;
+  }
+
+  if (lockedBalance < targetBalance) {
+    const rawDeficit = targetBalance - lockedBalance;
+    const transferAmount =
+      rawDeficit < MIN_PROVIDER_BALANCE ? MIN_PROVIDER_BALANCE : rawDeficit;
+
+    let availableBalance = 0n;
+    let ledgerExists = true;
+    try {
+      const ledger = await ctx.ledger.getLedger();
+      availableBalance = ledger.availableBalance;
+    } catch {
+      ledgerExists = false;
+      availableBalance = 0n;
+    }
+
+    if (availableBalance < transferAmount) {
+      const configuredDeposit = parseOgNumber(
+        process.env.ZG_COMPUTE_AUTO_DEPOSIT_OG ??
+          process.env.ZG_COMPUTE_LEDGER_BALANCE,
+        "1"
+      );
+      const transferDeficit = Number(
+        ethers.formatEther(transferAmount - availableBalance)
+      );
+      const depositAmount = ledgerExists
+        ? maxOgNumber(configuredDeposit, transferDeficit)
+        : maxOgNumber(
+            configuredDeposit,
+            transferDeficit,
+            MIN_LEDGER_CREATION_DEPOSIT_OG
+          );
+
+      console.log(
+        `[compute] depositing ${depositAmount} OG to 0G Compute ledger before provider funding`
+      );
+      await ctx.ledger.depositFund(depositAmount);
+    }
+
+    console.log(
+      `[compute] funding provider=${provider} amount=${ethers.formatEther(
+        transferAmount
+      )} OG`
+    );
+    await ctx.ledger.transferFund(provider, "inference", transferAmount);
+  }
+
+  await ctx.broker.acknowledgeProviderSigner(provider);
+}
+
 // List semua inference service yang tersedia di 0G Compute Network
 export async function listServices(): Promise<ServiceInfo[]> {
-  const broker = await createBroker();
+  const { broker } = await createBroker();
   const raw = await broker.listService();
   return raw.map(toServiceInfo);
 }
@@ -89,7 +180,8 @@ export async function runInference(
   knowledgeContext: string,
   mentorName: string
 ): Promise<InferenceResult> {
-  const broker = await createBroker();
+  const ctx = await createBroker();
+  const { broker } = ctx;
 
   const raw = await broker.listService();
   const services = raw.map(toServiceInfo);
@@ -110,6 +202,8 @@ Respond concisely and practically. Do not fabricate information not present in t
   ];
 
   const requestContent = JSON.stringify({ model: service.model, messages });
+
+  await ensureProviderFunded(ctx, service.provider);
 
   // Generate one-time billing headers untuk request ini
   const rawHeaders = await broker.getRequestHeaders(

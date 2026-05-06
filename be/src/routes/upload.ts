@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { uploadKnowledge, getKnowledgeKeyBytes } from "../lib/storage";
-import { updateStorageRef, setSealedKey } from "../lib/contracts";
+import { updateStorageRef, setSealedKey, getMentorMeta } from "../lib/contracts";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -43,6 +43,12 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
     //    Kalau contract belum deploy, lewati dan tetap return rootHash
     let txHash: string | null = null;
     if (process.env.CONTRACT_INFT) {
+      // Verify token exists before writing on-chain
+      const meta = await getMentorMeta(tokenId);
+      if (!meta.mintedAt) {
+        res.status(400).json({ error: `Token ID ${tokenId} does not exist on-chain. Register the mentor first.` });
+        return;
+      }
       txHash = await updateStorageRef(tokenId, rootHash, 50);
       // 3. Simpan sealedKey on-chain (AES key untuk owner saat ini)
       await setSealedKey(tokenId, getKnowledgeKeyBytes(mentorId));

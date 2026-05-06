@@ -7,9 +7,9 @@ import crypto from "crypto";
 
 const INDEXER_URL =
   process.env.ZG_INDEXER_URL ??
-  "https://indexer-storage-testnet-turbo.0g.ai";
+  "https://indexer-storage-turbo.0g.ai";
 const RPC_URL =
-  process.env.ZG_RPC_URL ?? "https://evmrpc-testnet.0g.ai";
+  process.env.ZG_RPC_URL ?? "https://evmrpc.0g.ai";
 
 function getSigner() {
   if (!process.env.ORACLE_PRIVATE_KEY)

@@ -1,14 +1,13 @@
 import { isAddress, zeroAddress, type Address } from "viem";
 
-function envAddress(key: string): Address {
-  const value = process.env[key];
-  return value && isAddress(value) ? value : zeroAddress;
+function envAddress(value: string | undefined): Address {
+  return value && isAddress(value, { strict: false }) ? (value as Address) : zeroAddress;
 }
 
-export const MARKETPLACE_ADDRESS = envAddress("NEXT_PUBLIC_MARKETPLACE_ADDRESS");
-export const ACCESS_SHARES_ADDRESS = envAddress("NEXT_PUBLIC_ACCESS_SHARES_ADDRESS");
-export const REVENUE_ADDRESS = envAddress("NEXT_PUBLIC_REVENUE_ADDRESS");
-export const INFT_ADDRESS = envAddress("NEXT_PUBLIC_INFT_ADDRESS");
+export const MARKETPLACE_ADDRESS = envAddress(process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS);
+export const ACCESS_SHARES_ADDRESS = envAddress(process.env.NEXT_PUBLIC_ACCESS_SHARES_ADDRESS);
+export const REVENUE_ADDRESS = envAddress(process.env.NEXT_PUBLIC_REVENUE_ADDRESS);
+export const INFT_ADDRESS = envAddress(process.env.NEXT_PUBLIC_INFT_ADDRESS);
 
 export const hasMarketplaceAddress = MARKETPLACE_ADDRESS !== zeroAddress;
 export const hasAccessSharesAddress = ACCESS_SHARES_ADDRESS !== zeroAddress;

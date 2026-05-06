@@ -1,9 +1,18 @@
 "use client";
 
-import { useAccount, useWriteContract } from "wagmi";
+import { useState } from "react";
+import { useAccount, usePublicClient, useReadContracts, useSendTransaction, useWriteContract } from "wagmi";
 
+import { api } from "@/lib/api";
 import { formatOg, useMentors, usePendingCuratorRewards, useShareBalance, useSharePrice } from "@/hooks/useMarketplace";
-import { MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
+import { hasMarketplaceAddress, MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
+
+// 0.001 ETH base + 0.000002 ETH per share sold (from AccessSharesMarket.sol)
+const BASE_PRICE = BigInt("1000000000000000");
+const PRICE_SLOPE = BigInt("2000000000000");
+const CURATOR_POOL = 500;
+
+const ALLOCATION_COLORS = ["#14b8a6", "#facc15", "#6d5bd0", "#f97316", "#ec4899"];
 
 import { subtleButtonClass, accentButtonClass, solidAccentBtn } from "./shared";
 
@@ -12,62 +21,76 @@ const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 export default function SharesView() {
   const { address } = useAccount();
   const { data: mentors = [] } = useMentors();
-  const fallbackSharePositions = [
-    {
-      mentor: "IndoRegulator_01",
-      shares: "184 shares",
-      portfolio: "26.9% of portfolio",
-      price: "1,240 0G",
-      change: "+14.2%",
-      rewards: "42.8 0G",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
-    },
-    {
-      mentor: "QuantAlpha_7",
-      shares: "61 shares",
-      portfolio: "28.6% of portfolio",
-      price: "3,890 0G",
-      change: "+9.5%",
-      rewards: "36.4 0G",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
-    },
-    {
-      mentor: "CyberSec_V2",
-      shares: "24 shares",
-      portfolio: "17.2% of portfolio",
-      price: "8,105 0G",
-      change: "+4.1%",
-      rewards: "28.7 0G",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuC9hN7Aj8iDuVpi80ZyqSXqOofwILzZ4vWR6r2Y1XFYDb6v14RKB-NGZ5izd5lCKWGoar_4i3PibYHZLmzvVDY5LelKLD7jM6NeqaDjfgfhOI8VRi-jrRGoObVKf8cv5Si0_PsEY8lSLEbEDuv2KEv80bgXjfwtE2mQAlU5ajHb9cVgXzWmZxVZvVihmZvKMnoIQ2o2zRWPxOtGCVWFGG7jVV8F3crN16L8knqQs6E4GSUZFjjtjw9BMfJux0V3dGc26QWq8xOodc",
-    },
+  const mentorImages = [
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
   ];
-  const liveSharePositions = mentors.slice(0, 3).map((mentor, index) => ({
+  const sharePositions = mentors.map((mentor, index) => ({
     mentor: mentor.name,
-    shares: "0 shares",
+    shares: "— shares",
     portfolio: `Mentor #${mentor.tokenId}`,
     price: "-",
     change: "+0.0%",
     rewards: "-",
     tokenId: mentor.tokenId,
-    image: fallbackSharePositions[index % fallbackSharePositions.length].image,
+    image: mentorImages[index % mentorImages.length],
   }));
-  const sharePositions = liveSharePositions.length > 0 ? liveSharePositions : fallbackSharePositions;
 
-  const rewards = [
-    ["IndoRegulator_01 reward", "Weekly usage rewards distribution", "2h ago", "+12.4 OG", "cyan"],
-    ["QuantAlpha_7 reward", "Weekly usage rewards distribution", "12h ago", "+9.7 OG", "yellow"],
-    ["CyberSec_V2 reward", "Weekly usage rewards distribution", "1d ago", "+7.3 OG", "cyan"],
-    ["IndoRegulator_01 reward", "Milestone bonus achieved", "2d ago", "+13.4 OG", "cyan"],
-  ];
+  // Batch-fetch balance + price + rewards for every mentor
+  const batchContracts = address && mentors.length > 0
+    ? mentors.flatMap((mentor) => [
+        { address: MARKETPLACE_ADDRESS, abi: marketplaceAbi, functionName: "getShareBalance" as const, args: [BigInt(mentor.tokenId), address] },
+        { address: MARKETPLACE_ADDRESS, abi: marketplaceAbi, functionName: "getSharePrice" as const, args: [BigInt(mentor.tokenId)] },
+        { address: MARKETPLACE_ADDRESS, abi: marketplaceAbi, functionName: "getPendingCuratorRewards" as const, args: [BigInt(mentor.tokenId), address] },
+      ])
+    : [];
+
+  const { data: batchResults } = useReadContracts({
+    contracts: batchContracts,
+    query: { enabled: Boolean(address && mentors.length > 0 && hasMarketplaceAddress) },
+  });
+
+  const portfolioItems = mentors.map((mentor, i) => {
+    const balance = Number(batchResults?.[i * 3]?.result ?? 0);
+    const price = (batchResults?.[i * 3 + 1]?.result as bigint | undefined) ?? BigInt(0);
+    const rewards = (batchResults?.[i * 3 + 2]?.result as bigint | undefined) ?? BigInt(0);
+    const value = BigInt(balance) * price;
+    return { mentor, balance, price, rewards, value };
+  });
+
+  const totalValue = portfolioItems.reduce((sum, item) => sum + item.value, BigInt(0));
+  const totalRewards = portfolioItems.reduce((sum, item) => sum + item.rewards, BigInt(0));
+  const activeMentorCount = portfolioItems.filter((item) => item.balance > 0).length;
+
+  // Allocation donut chart — only mentors where user has shares
+  let accumulated = 0;
+  const allocationItems = portfolioItems
+    .filter((item) => item.balance > 0)
+    .map((item, i) => {
+      const pct = totalValue > BigInt(0)
+        ? Number((item.value * BigInt(10000)) / totalValue) / 100
+        : 0;
+      const start = accumulated;
+      accumulated += pct;
+      return {
+        color: ALLOCATION_COLORS[i % ALLOCATION_COLORS.length],
+        name: item.mentor.name,
+        value: formatOg(item.value),
+        pct: `${pct.toFixed(1)}%`,
+        start,
+        end: accumulated,
+      };
+    });
+
+  const conicGradient = allocationItems.length > 0
+    ? `conic-gradient(${allocationItems.map((item) => `${item.color} ${item.start}% ${item.end}%`).join(",")})`
+    : "conic-gradient(#1f2937 0% 100%)";
 
   const statCards = [
-    { label: "Portfolio Value", value: "684K OG", detail: "Total share value", icon: "stack", stroke: "#2dd4bf" },
-    { label: "Usage Rewards", value: "107.9 OG", detail: "Unclaimed rewards", icon: "shield", stroke: "#2dd4bf" },
-    { label: "Active Mentors", value: "3", detail: "Mentors with exposure", icon: "users", stroke: "#2dd4bf" },
-    { label: "Avg Yield", value: "11.4%", detail: "Weekly yield trend", icon: "percent", stroke: "#2dd4bf" },
+    { label: "Portfolio Value", value: formatOg(totalValue), detail: "Total share value", icon: "stack", stroke: "#2dd4bf" },
+    { label: "Usage Rewards", value: formatOg(totalRewards), detail: "Unclaimed rewards", icon: "shield", stroke: "#2dd4bf" },
+    { label: "Active Mentors", value: String(activeMentorCount), detail: "Mentors with exposure", icon: "users", stroke: "#2dd4bf" },
+    { label: "Avg Yield", value: "—", detail: "Weekly yield trend", icon: "percent", stroke: "#2dd4bf" },
   ];
 
   return (
@@ -178,21 +201,21 @@ export default function SharesView() {
           </div>
           <div className="grid items-center gap-5 md:grid-cols-[170px_1fr]">
             <div>
-              <div className="relative mx-auto h-[160px] w-[160px] rounded-full bg-[conic-gradient(#14b8a6_0_54%,#facc15_54%_83%,#6d5bd0_83%_100%)] p-[22px] shadow-[0_0_34px_rgba(45,212,191,0.1)]">
+              <div
+                className="relative mx-auto h-[160px] w-[160px] rounded-full p-[22px] shadow-[0_0_34px_rgba(45,212,191,0.1)]"
+                style={{ background: conicGradient }}
+              >
                 <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-[rgba(96,165,250,0.18)] bg-[#071014] text-center">
-                  <span className="text-[18px] font-bold text-white">684K</span>
-                  <span className="text-[13px] font-bold leading-none text-white">OG</span>
+                  <span className="text-[14px] font-bold text-white">{formatOg(totalValue)}</span>
                   <span className="mt-1 text-[9px] uppercase tracking-[0.12em] text-[#6b7280]">Total</span>
                 </div>
               </div>
               <p className="mt-3 text-[10px] text-[#707b89]">Allocation by share value</p>
             </div>
             <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.2)]">
-              {[
-                ["#14b8a6", "IndoRegulator_01", "370.7K OG", "54.2%"],
-                ["#facc15", "QuantAlpha_7", "195.3K OG", "28.6%"],
-                ["#6d5bd0", "CyberSec_V2", "117.6K OG", "17.2%"],
-              ].map(([color, name, value, pct]) => (
+              {allocationItems.length === 0 ? (
+                <div className="px-4 py-6 text-center text-[11px] text-[#4b5563]">Buy shares to see allocation.</div>
+              ) : allocationItems.map(({ color, name, value, pct }) => (
                 <div key={name} className="grid grid-cols-[14px_1fr_auto] items-center gap-3 border-b border-[rgba(96,165,250,0.15)] px-4 py-3 last:border-b-0">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
                   <span>
@@ -216,7 +239,9 @@ export default function SharesView() {
           <div className="grid grid-cols-[1.35fr_0.9fr_0.8fr_0.75fr_0.8fr_1fr] gap-3 border-b border-[rgba(96,165,250,0.16)] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">
             <span>Mentor</span><span>Position</span><span>Share Price</span><span>Weekly Change</span><span>Rewards</span><span>Action</span>
           </div>
-          {sharePositions.map((row) => (
+          {sharePositions.length === 0 ? (
+            <div className="py-8 text-center text-[11px] text-[#4b5563]">No mentors on-chain yet. Buy shares from the Marketplace.</div>
+          ) : sharePositions.map((row) => (
             <SharePositionRow key={row.mentor} row={row} user={address} />
           ))}
           <p className="mt-3 text-[10px] text-[#707b89]">Showing 3 of 3 positions</p>
@@ -231,18 +256,17 @@ export default function SharesView() {
             <button className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">View all</button>
           </div>
           <div className="mb-4 flex flex-col gap-3">
-            {rewards.map(([title, detail, time, amount, tone]) => (
-              <div key={`${title}-${time}`} className="grid grid-cols-[36px_1fr_auto] items-center gap-3">
-                <div className={`flex h-9 w-9 items-center justify-center rounded border ${tone === "yellow" ? "border-[rgba(250,204,21,0.32)] bg-[rgba(250,204,21,0.08)] text-[#facc15]" : "border-[rgba(45,212,191,0.32)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]"}`}>
-                  {tone === "yellow" ? "%" : "♙"}
-                </div>
+            {portfolioItems.filter((item) => item.balance > 0).length === 0 ? (
+              <div className="py-6 text-center text-[11px] text-[#4b5563]">No reward activity yet.</div>
+            ) : portfolioItems.filter((item) => item.balance > 0).map((item) => (
+              <div key={item.mentor.tokenId} className="grid grid-cols-[36px_1fr_auto] items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded border border-[rgba(45,212,191,0.32)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]">♙</div>
                 <div className="min-w-0">
-                  <p className="truncate text-[11px] font-bold text-white">{title}</p>
-                  <p className="truncate text-[10px] text-[#707b89]">{detail}</p>
+                  <p className="truncate text-[11px] font-bold text-white">{item.mentor.name}</p>
+                  <p className="truncate text-[10px] text-[#707b89]">Pending curator rewards</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-[#707b89]">{time}</p>
-                  <p className="text-[11px] font-bold text-[#2dd4bf]">{amount}</p>
+                  <p className="text-[11px] font-bold text-[#2dd4bf]">{formatOg(item.rewards)}</p>
                 </div>
               </div>
             ))}
@@ -269,49 +293,77 @@ export default function SharesView() {
 
           <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.14)]">
             <div className="grid grid-cols-[1.4fr_0.8fr_1fr_0.6fr_0.6fr_1fr] gap-3 bg-[rgba(255,255,255,0.025)] px-3 py-2 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">
-              <span>Mentor</span><span>Share Price</span><span>Shares Sold</span><span>Est. Yield</span><span>7D</span><span>Action</span>
+              <span>Mentor</span><span>Share Price</span><span>Shares Sold</span><span>Status</span><span>Confidence</span><span>Action</span>
             </div>
-            {[
-              { name: "IndoRegulator_01", category: "Regulatory Playbook", price: "1,240 0G", soldPct: 72, sold: "720", total: "1000", yield: "14.2%", change: "+18.4%" },
-              { name: "QuantAlpha_7", category: "DeFi Strategy", price: "3,890 0G", soldPct: 54, sold: "540", total: "1000", yield: "11.8%", change: "+9.5%" },
-              { name: "CyberSec_V2", category: "Web3 Security", price: "8,105 0G", soldPct: 31, sold: "310", total: "1000", yield: "9.2%", change: "+4.1%" },
-              { name: "DeFiSage_01", category: "DeFi Analytics", price: "620 0G", soldPct: 18, sold: "180", total: "1000", yield: "7.8%", change: "+2.3%" },
-            ].map((row) => (
-              <div key={row.name} className="grid grid-cols-[1.4fr_0.8fr_1fr_0.6fr_0.6fr_1fr] items-center gap-3 border-t border-[rgba(96,165,250,0.12)] px-3 py-3 text-[11px]">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[rgba(45,212,191,0.3)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]">⬡</div>
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-white">{row.name}</p>
-                    <p className="text-[9px] text-[#707b89]">{row.category}</p>
+            {portfolioItems.length === 0 ? (
+              <div className="px-3 py-8 text-center text-[11px] text-[#4b5563]">No mentors on-chain yet.</div>
+            ) : portfolioItems.map((item) => {
+              const sold = item.price > BASE_PRICE ? Number((item.price - BASE_PRICE) / PRICE_SLOPE) : 0;
+              const soldPct = Math.min(100, Math.round((sold / CURATOR_POOL) * 100));
+              return (
+                <div key={item.mentor.tokenId} className="grid grid-cols-[1.4fr_0.8fr_1fr_0.6fr_0.6fr_1fr] items-center gap-3 border-t border-[rgba(96,165,250,0.12)] px-3 py-3 text-[11px]">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[rgba(45,212,191,0.3)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]">⬡</div>
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-white">{item.mentor.name}</p>
+                      <p className="text-[9px] text-[#707b89]">{item.mentor.category}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-bold text-white">{formatOg(item.price)}</p>
+                    <p className="text-[9px] text-[#707b89]">per share</p>
+                  </div>
+                  <div>
+                    <p className="mb-1 font-bold text-white">{sold} / {CURATOR_POOL}</p>
+                    <div className="h-[3px] w-full rounded-full bg-[rgba(96,165,250,0.14)]">
+                      <div className="h-[3px] rounded-full bg-[#2dd4bf]" style={{ width: `${soldPct}%` }} />
+                    </div>
+                  </div>
+                  <span className={`text-[9px] font-bold ${item.mentor.status === 2 ? "text-[#2dd4bf]" : "text-[#fbbf24]"}`}>
+                    {item.mentor.status === 2 ? "READY" : item.mentor.status === 1 ? "REVIEW" : "DRAFT"}
+                  </span>
+                  <span className="font-bold text-[#d1d5db]">{item.mentor.confidenceScore}%</span>
+                  <div className="flex items-center justify-end gap-2">
+                    <BuySharesButton tokenId={item.mentor.tokenId} className={`px-3 py-1.5 text-[9px] ${solidAccentBtn}`} />
                   </div>
                 </div>
-                <div>
-                  <p className="font-bold text-white">{row.price}</p>
-                  <p className="text-[9px] text-[#707b89]">per share</p>
-                </div>
-                <div>
-                  <p className="mb-1 font-bold text-white">{row.sold} / {row.total}</p>
-                  <div className="h-[3px] w-full rounded-full bg-[rgba(96,165,250,0.14)]">
-                    <div className="h-[3px] rounded-full bg-[#2dd4bf]" style={{ width: `${row.soldPct}%` }} />
-                  </div>
-                </div>
-                <span className="font-bold text-[#2dd4bf]">{row.yield}</span>
-                <span className="font-bold text-[#2dd4bf]">{row.change}</span>
-                <div className="flex items-center justify-end gap-2">
-                  <button className={`px-3 py-1.5 text-[9px] ${solidAccentBtn}`}>BUY</button>
-                  <button className={`px-2 py-1.5 text-[9px] ${subtleButtonClass}`}>INFO</button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-3 flex items-center justify-between text-[10px] text-[#707b89]">
-            <span>Showing 4 of 12 available mentors</span>
-            <button className="font-semibold text-[#2dd4bf]">View all →</button>
+            <span>Showing {portfolioItems.length} mentor{portfolioItems.length !== 1 ? "s" : ""} on-chain</span>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function BuySharesButton({ tokenId, className }: { tokenId: number; className: string }) {
+  const publicClient = usePublicClient();
+  const { sendTransactionAsync } = useSendTransaction();
+  const [busy, setBusy] = useState(false);
+
+  async function handleBuy() {
+    setBusy(true);
+    try {
+      const result = await api.buildBuySharesTx({ tokenId, amount: 1 });
+      const hash = await sendTransactionAsync({
+        to: result.tx.to,
+        data: result.tx.data,
+        value: BigInt(result.tx.value),
+      });
+      await publicClient?.waitForTransactionReceipt({ hash });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button className={className} disabled={busy} onClick={handleBuy} type="button">
+      {busy ? "PENDING..." : "BUY"}
+    </button>
   );
 }
 

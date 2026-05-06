@@ -23,68 +23,14 @@ import { useState, type ReactNode } from "react";
 import { useAccount, usePublicClient, useSendTransaction, useSignMessage } from "wagmi";
 
 import { api, type TxPayload } from "@/lib/api";
-import { formatOg, useMarketQuote, useMentors, type MentorMeta } from "@/hooks/useMarketplace";
+import { zeroGMainnet } from "@/lib/chains";
+import { formatOg, useGapEvents, useMarketQuote, useMentors, type MentorMeta } from "@/hooks/useMarketplace";
 
-const fallbackMentors = [
-  {
-    id: 1,
-    name: "IndoRegulator_01",
-    tag: "GOVTECH & COMPLIANCE",
-    knowledgeType: "Regulatory",
-    gapCount: "12 Unresolved",
-    sharePrice: "1,240",
-    confidenceScore: "98.4%",
-    tone: "regulatory",
-    signal: "TRENDING",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
-  },
-  {
-    id: 2,
-    name: "QuantAlpha_7",
-    tag: "DEFI ARBITRAGE",
-    knowledgeType: "DeFi Strategy",
-    gapCount: "3 Unresolved",
-    sharePrice: "3,890",
-    confidenceScore: "82.1%",
-    tone: "defi",
-    signal: "YIELD",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
-  },
-  {
-    id: 3,
-    name: "CyberSec_V2",
-    tag: "SMART CONTRACT AUDIT",
-    knowledgeType: "Security Auditing",
-    gapCount: "0 Unresolved",
-    sharePrice: "8,105",
-    confidenceScore: "99.9%",
-    tone: "security",
-    signal: "VERIFIED",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
-  },
+const mentorImages = [
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuC9hN7Aj8iDuVpi80ZyqSXqOofwILzZ4vWR6r2Y1XFYDb6v14RKB-NGZ5izd5lCKWGoar_4i3PibYHZLmzvVDY5LelKLD7jM6NeqaDjfgfhOI8VRi-jrRGoObVKf8cv5Si0_PsEY8lSLEbEDuv2KEv80bgXjfwtE2mQAlU5ajHb9cVgXzWmZxVZvVihmZvKMnoIQ2o2zRWPxOtGCVWFGG7jVV8F3crN16L8knqQs6E4GSUZFjjtjw9BMfJux0V3dGc26QWq8xOodc",
 ] as const;
-
-const gapReports = [
-  { id: 1, title: "EU MiCA Compliance V2", category: "Regulatory", mentors: 42, status: "HIGH", reward: "+18.4K", icon: ClipboardList },
-  { id: 2, title: "L2 Rollup Security Exploits", category: "CyberSec", mentors: 89, status: "HOT", reward: "+31.2K", icon: Crosshair },
-  { id: 3, title: "MEV Protection Mechanisms", category: "DeFi", mentors: 37, status: "RISING", reward: "+12.7K", icon: UserRound },
-] as const;
-
-const topMentors = [
-  { ...fallbackMentors[2], change: "+14.2% This Week" },
-  { ...fallbackMentors[0], change: "+9.5% This Week" },
-  { ...fallbackMentors[1], change: "+7.8% This Week" },
-];
-
-const marketplaceStats = [
-  { label: "ACTIVE MENTORS", value: "142", sub: "+8 this week", icon: Users, tone: "text-[#2dd4bf]" },
-  { label: "TOTAL VALUE LOCKED", value: "12.48M 0G", sub: "+6.2%", icon: Lock, tone: "text-[#2dd4bf]" },
-  { label: "AVG. CONFIDENCE", value: "92.7%", sub: "+3.1%", icon: Waves, tone: "text-[#2dd4bf]" },
-  { label: "GAP OPPORTUNITIES", value: "27", sub: "High Potential", icon: Crosshair, tone: "text-[#fbbf24]" },
-];
 
 const filterOptions = [
   { label: "TRENDING", icon: TrendingUp },
@@ -158,17 +104,39 @@ function Sparkline({ tone = "teal" }: { tone?: "teal" | "blue" | "amber" }) {
   );
 }
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function useTxPayloadSender() {
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: zeroGMainnet.id });
   const { sendTransactionAsync } = useSendTransaction();
 
   return async (tx: TxPayload) => {
     const hash = await sendTransactionAsync({
+      chainId: zeroGMainnet.id,
       to: tx.to,
       data: tx.data,
       value: BigInt(tx.value),
     });
-    await publicClient?.waitForTransactionReceipt({ hash });
+    if (!publicClient) return hash;
+
+    try {
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+        timeout: 120_000,
+      });
+    } catch (err) {
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        await wait(2_500);
+        try {
+          await publicClient.getTransactionReceipt({ hash });
+          return hash;
+        } catch {
+          // Some 0G RPC nodes lag receipt indexing immediately after broadcast.
+        }
+      }
+      throw err;
+    }
     return hash;
   };
 }
@@ -498,45 +466,43 @@ function toDisplayMentor(mentor: MentorMeta, index: number): DisplayMentor {
     confidenceScore: `${mentor.confidenceScore}%`,
     tone,
     signal: mentor.status === 2 ? "VERIFIED" : "DRAFT",
-    image: fallbackMentors[index % fallbackMentors.length].image,
+    image: mentorImages[index % mentorImages.length],
   };
 }
 
 export default function MarketplacePage() {
   const [activeFilter, setActiveFilter] = useState("TRENDING");
   const { data: onchainMentors = [] } = useMentors();
-  const displayMentors = onchainMentors.length > 0 ? onchainMentors.map(toDisplayMentor) : fallbackMentors;
+  const { data: gapEvents = [] } = useGapEvents();
+  const displayMentors = onchainMentors.map(toDisplayMentor);
   const topDisplayMentors: Array<DisplayMentor & { change: string }> =
-    onchainMentors.length > 0
-      ? displayMentors.slice(0, 3).map((mentor) => ({ ...mentor, change: "+0.0% This Week" }))
-      : topMentors.map((mentor) => ({ ...mentor, tokenId: undefined }));
-  const liveStats =
-    onchainMentors.length > 0
-      ? [
-          { label: "ACTIVE MENTORS", value: String(onchainMentors.length), sub: "on-chain", icon: Users, tone: "text-[#2dd4bf]" },
-          {
-            label: "TOTAL QUERIES",
-            value: String(onchainMentors.reduce((sum, mentor) => sum + mentor.totalQueries, 0)),
-            sub: "recorded",
-            icon: Lock,
-            tone: "text-[#2dd4bf]",
-          },
-          {
-            label: "AVG. CONFIDENCE",
-            value: `${Math.round(onchainMentors.reduce((sum, mentor) => sum + mentor.confidenceScore, 0) / onchainMentors.length)}%`,
-            sub: "oracle score",
-            icon: Waves,
-            tone: "text-[#2dd4bf]",
-          },
-          {
-            label: "GAP OPPORTUNITIES",
-            value: String(onchainMentors.reduce((sum, mentor) => sum + mentor.gapCount, 0)),
-            sub: "unresolved",
-            icon: Crosshair,
-            tone: "text-[#fbbf24]",
-          },
-        ]
-      : marketplaceStats;
+    displayMentors.slice(0, 3).map((mentor) => ({ ...mentor, change: "+0.0% This Week" }));
+  const liveStats = [
+    { label: "ACTIVE MENTORS", value: String(onchainMentors.length), sub: "on-chain", icon: Users, tone: "text-[#2dd4bf]" },
+    {
+      label: "TOTAL QUERIES",
+      value: String(onchainMentors.reduce((sum, mentor) => sum + mentor.totalQueries, 0)),
+      sub: "recorded",
+      icon: Lock,
+      tone: "text-[#2dd4bf]",
+    },
+    {
+      label: "AVG. CONFIDENCE",
+      value: onchainMentors.length > 0
+        ? `${Math.round(onchainMentors.reduce((sum, mentor) => sum + mentor.confidenceScore, 0) / onchainMentors.length)}%`
+        : "—",
+      sub: "oracle score",
+      icon: Waves,
+      tone: "text-[#2dd4bf]",
+    },
+    {
+      label: "GAP OPPORTUNITIES",
+      value: String(onchainMentors.reduce((sum, mentor) => sum + mentor.gapCount, 0)),
+      sub: "unresolved",
+      icon: Crosshair,
+      tone: "text-[#fbbf24]",
+    },
+  ];
 
   return (
     <>
@@ -597,7 +563,11 @@ export default function MarketplacePage() {
           </div>
 
           <div className="mb-4 grid grid-cols-3 gap-4">
-            {displayMentors.map((mentor, index) => (
+            {displayMentors.length === 0 ? (
+              <div className="col-span-3 flex items-center justify-center rounded-lg border border-[#1f2937] bg-black py-16 text-[12px] font-mono text-[#586474]">
+                No mentors registered on-chain yet. Be the first — go to My Mentors.
+              </div>
+            ) : displayMentors.map((mentor, index) => (
               <MentorCard key={mentor.id} mentor={mentor} index={index} />
             ))}
           </div>
@@ -629,32 +599,31 @@ export default function MarketplacePage() {
               </div>
 
               <div>
-                {gapReports.map((report) => {
-                  const ReportIcon = report.icon;
-
-                  return (
-                  <div
-                    key={report.id}
-                    className="grid grid-cols-[1.4fr_0.55fr_0.4fr_0.5fr_0.62fr_0.78fr] items-center gap-3 border-b border-[#14212a] px-1 py-2.5 text-[10px]"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[rgba(45,212,191,0.24)] bg-[rgba(45,212,191,0.07)] text-[#2dd4bf] shadow-[0_0_12px_rgba(45,212,191,0.08)]">
-                        <ReportIcon className="h-4 w-4" aria-hidden="true" />
+                {gapEvents.length === 0 ? (
+                  <div className="px-1 py-6 text-center text-[11px] text-[#4b5563]">No gap events detected on-chain yet.</div>
+                ) : (
+                  gapEvents.slice(0, 3).map((event) => (
+                    <div key={event.txHash} className="grid grid-cols-[1.4fr_0.55fr_0.4fr_0.5fr_0.62fr_0.78fr] items-center gap-3 border-b border-[#14212a] px-1 py-2.5 text-[10px]">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[rgba(45,212,191,0.24)] bg-[rgba(45,212,191,0.07)] text-[#2dd4bf]">
+                          <Crosshair className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                        <span className="truncate font-bold text-[#e5e7eb]">
+                          {event.type === "GapResolved" ? "Gap resolved" : "Blind spot detected"} — Mentor #{event.tokenId}
+                        </span>
                       </div>
-                      <span className="truncate font-bold text-[#e5e7eb]">{report.title}</span>
+                      <span className="text-[#6b7280]">Oracle</span>
+                      <span className="font-bold text-[#d1d5db]">{event.count}</span>
+                      <span className={`w-fit rounded border px-2 py-1 text-[9px] font-bold tracking-[0.08em] ${event.type === "GapResolved" ? statusClasses.RISING : event.count > 10 ? statusClasses.HIGH : statusClasses.HOT}`}>
+                        {event.type === "GapResolved" ? "RESOLVED" : event.count > 10 ? "HIGH" : "ACTIVE"}
+                      </span>
+                      <span className="font-extrabold text-[#2dd4bf]">Block {event.blockNumber.toString()}</span>
+                      <button className="min-h-0 whitespace-nowrap rounded border border-[rgba(45,212,191,0.4)] bg-[rgba(45,212,191,0.06)] px-3 py-1.5 font-mono text-[9px] font-bold tracking-[0.1em] text-[#2dd4bf]">
+                        VIEW REPORT
+                      </button>
                     </div>
-                    <span className="text-[#6b7280]">{report.category}</span>
-                    <span className="font-bold text-[#d1d5db]">{report.mentors}</span>
-                    <span className={`w-fit rounded border px-2 py-1 text-[9px] font-bold tracking-[0.08em] ${statusClasses[report.status]}`}>
-                      {report.status}
-                    </span>
-                    <span className="font-extrabold text-[#2dd4bf]">{report.reward} 0G</span>
-                    <button className="min-h-0 whitespace-nowrap rounded border border-[rgba(45,212,191,0.4)] bg-[rgba(45,212,191,0.06)] px-3 py-1.5 font-mono text-[9px] font-bold tracking-[0.1em] text-[#2dd4bf]">
-                      VIEW REPORT
-                    </button>
-                  </div>
-                  );
-                })}
+                  ))
+                )}
               </div>
 
               <button className="mx-auto mt-2.5 flex min-h-0 items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">

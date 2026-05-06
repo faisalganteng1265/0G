@@ -222,6 +222,7 @@ contract AIMentorINFT is ERC721, Ownable, IERC7857, IERC7857DataVerifier {
         external
         onlyOracle
     {
+        _requireOwned(tokenId);
         require(newConfidence <= 100, "score > 100");
         MentorMeta storage m = _mentors[tokenId];
         m.storageRef = newRef;
@@ -233,6 +234,7 @@ contract AIMentorINFT is ERC721, Ownable, IERC7857, IERC7857DataVerifier {
 
     /// @notice Set or replace the sealedKey for a token (called by oracle/TEE after re-encryption).
     function setSealedKey(uint256 tokenId, bytes calldata sealedKey) external onlyOracle {
+        _requireOwned(tokenId);
         _sealedKeys[tokenId] = sealedKey;
         bytes[] memory sealedKeys = new bytes[](1);
         sealedKeys[0] = sealedKey;
