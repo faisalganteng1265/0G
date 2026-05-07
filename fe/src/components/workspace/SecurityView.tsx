@@ -21,7 +21,16 @@ export default function SecurityView() {
   const [mentorId, setMentorId] = useState("");
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
-  const logs = securityEvents.slice(0, 8).map((event) => [
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [showRowsMenu, setShowRowsMenu] = useState(false);
+
+  const totalPages = Math.max(1, Math.ceil(securityEvents.length / rowsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIdx = (safeCurrentPage - 1) * rowsPerPage;
+  const endIdx = Math.min(startIdx + rowsPerPage, securityEvents.length);
+
+  const logs = securityEvents.slice(startIdx, endIdx).map((event) => [
     event.type === "Transfer" ? "⇄" : "▱",
     event.type === "Transfer" ? "INFT_TRANSFER" : "STORAGE_COMMIT",
     `Mentor #${event.tokenId} ${event.detail}`,
@@ -121,19 +130,67 @@ export default function SecurityView() {
           </div>
 
           <div className="mt-4 flex items-center justify-between text-[10px] text-[#8b95a3]">
-            <span>Showing 1 to 10 of 234 events</span>
-            <div className="flex items-center gap-3">
-              <span className="rounded border border-[rgba(96,165,250,0.18)] px-3 py-2">‹</span>
-              <span className="rounded border border-[#2dd4bf]/45 bg-[#2dd4bf]/20 px-3 py-2 text-[#2dd4bf]">1</span>
-              <span className="rounded border border-[rgba(96,165,250,0.18)] px-3 py-2">2</span>
-              <span className="rounded border border-[rgba(96,165,250,0.18)] px-3 py-2">3</span>
-              <span>...</span>
-              <span className="rounded border border-[rgba(96,165,250,0.18)] px-3 py-2">24</span>
-              <span className="rounded border border-[rgba(96,165,250,0.18)] px-3 py-2">›</span>
+            <span>
+              {securityEvents.length === 0
+                ? "No events"
+                : `Showing ${startIdx + 1} to ${endIdx} of ${securityEvents.length} events`}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                className="rounded border border-[rgba(96,165,250,0.18)] px-3 py-2 disabled:opacity-30"
+                disabled={safeCurrentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >‹</button>
+              {(() => {
+                const pages: (number | "…")[] = [];
+                if (totalPages <= 7) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  pages.push(1);
+                  if (safeCurrentPage > 3) pages.push("…");
+                  for (let i = Math.max(2, safeCurrentPage - 1); i <= Math.min(totalPages - 1, safeCurrentPage + 1); i++) pages.push(i);
+                  if (safeCurrentPage < totalPages - 2) pages.push("…");
+                  pages.push(totalPages);
+                }
+                return pages.map((p, i) =>
+                  p === "…" ? (
+                    <span key={`ellipsis-${i}`} className="px-2">...</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`rounded border px-3 py-2 ${
+                        p === safeCurrentPage
+                          ? "border-[#2dd4bf]/45 bg-[#2dd4bf]/20 text-[#2dd4bf]"
+                          : "border-[rgba(96,165,250,0.18)]"
+                      }`}
+                    >{p}</button>
+                  )
+                );
+              })()}
+              <button
+                className="rounded border border-[rgba(96,165,250,0.18)] px-3 py-2 disabled:opacity-30"
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >›</button>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="relative flex items-center gap-3">
               <span>Rows per page:</span>
-              <button className={`${subtleButtonClass} px-4 py-2 text-[10px]`}>10⌄</button>
+              <button
+                className={`${subtleButtonClass} px-4 py-2 text-[10px]`}
+                onClick={() => setShowRowsMenu((v) => !v)}
+              >{rowsPerPage}⌄</button>
+              {showRowsMenu && (
+                <div className="absolute bottom-full right-0 mb-1 rounded border border-[rgba(96,165,250,0.18)] bg-black shadow-lg">
+                  {[10, 25, 50].map((n) => (
+                    <button
+                      key={n}
+                      className={`block w-full px-4 py-2 text-left text-[10px] hover:bg-[rgba(96,165,250,0.08)] ${n === rowsPerPage ? "text-[#2dd4bf]" : "text-[#8b95a3]"}`}
+                      onClick={() => { setRowsPerPage(n); setCurrentPage(1); setShowRowsMenu(false); }}
+                    >{n}</button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
