@@ -24,7 +24,7 @@ import { useAccount, usePublicClient, useSendTransaction, useSignMessage } from 
 
 import { api, type TxPayload } from "@/lib/api";
 import { zeroGMainnet } from "@/lib/chains";
-import { formatOg, useGapEvents, useMarketQuote, useMentors, type MentorMeta } from "@/hooks/useMarketplace";
+import { formatOg, useGapEvents, useMarketQuote, useMentors, useShareBalance, type MentorMeta } from "@/hooks/useMarketplace";
 
 const mentorImages = [
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
@@ -172,10 +172,14 @@ function BuySharesButton({
 }
 
 function MentorCard({ mentor, index }: { mentor: DisplayMentor; index: number }) {
+  const { address } = useAccount();
   const sendPayload = useTxPayloadSender();
   const quote = useMarketQuote(mentor.tokenId, 1);
+  const shareBalance = useShareBalance(mentor.tokenId, address);
   const [busy, setBusy] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const ownedShares = Number(shareBalance.data ?? 0);
+  const canAskMentor = mentor.tokenId !== undefined && ownedShares > 0;
 
   async function buyAccess() {
     if (mentor.tokenId === undefined) return;
@@ -252,9 +256,15 @@ function MentorCard({ mentor, index }: { mentor: DisplayMentor; index: number })
         </div>
 
         <div className="mt-auto flex gap-2">
-          <button className={`flex-1 px-0 py-2 text-[10px] ${subtleButtonClass}`} disabled={mentor.tokenId === undefined} onClick={() => setIsChatOpen(true)} type="button">
+          <button
+            className={`flex-1 px-0 py-2 text-[10px] ${subtleButtonClass} disabled:cursor-not-allowed disabled:opacity-45`}
+            disabled={!canAskMentor}
+            onClick={() => setIsChatOpen(true)}
+            title={canAskMentor ? "Ask this mentor" : "Buy shares before asking this mentor"}
+            type="button"
+          >
             <MessageSquare className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />
-            ASK MENTOR
+            {address ? "ASK MENTOR" : "CONNECT FIRST"}
           </button>
           <button className={`flex-1 cursor-pointer rounded border px-0 py-2 font-mono text-[10px] font-extrabold tracking-[0.1em] ${buyAccessToneClasses[mentor.tone]}`} disabled={busy === "buy" || mentor.tokenId === undefined} onClick={buyAccess} type="button">
             <Lock className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />
@@ -263,7 +273,7 @@ function MentorCard({ mentor, index }: { mentor: DisplayMentor; index: number })
         </div>
       </div>
 
-      {isChatOpen && <MentorChatModal mentor={mentor} onClose={() => setIsChatOpen(false)} />}
+      {isChatOpen && canAskMentor && <MentorChatModal mentor={mentor} onClose={() => setIsChatOpen(false)} />}
     </>
   );
 }

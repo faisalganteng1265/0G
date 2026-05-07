@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useWriteContract } from "wagmi";
 
-import { useMentors } from "@/hooks/useMarketplace";
+import { useMentorActivityEvents, useMentors } from "@/hooks/useMarketplace";
 import { api } from "@/lib/api";
 import { MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
 
@@ -13,6 +13,7 @@ const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function MentorsView() {
   const { data: onchainMentors = [], refetch } = useMentors();
+  const { data: activityEvents = [] } = useMentorActivityEvents();
   const { writeContractAsync } = useWriteContract();
   const [isMintOpen, setIsMintOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -48,6 +49,14 @@ export default function MentorsView() {
   const avgConfidenceLabel = mentors.length > 0 ? `${avgConfidence.toFixed(1)}%` : "0%";
   const pendingESign = mentors.filter((mentor) => mentor.status === "REVIEW").length;
   const activeDrafts = mentors.filter((mentor) => mentor.status === "DRAFT").length;
+  const recentActivity = activityEvents.slice(0, 4).map((event) => {
+    const mentor = mentors.find((item) => item.tokenId === event.tokenId);
+    return {
+      ...event,
+      title: event.type === "MentorRegistered" ? event.title : `${mentor?.name ?? `Mentor #${event.tokenId}`} ${event.title.toLowerCase()}`,
+      time: `Block ${event.blockNumber.toString()}`,
+    };
+  });
 
   async function mintMentor(event: FormEvent) {
     event.preventDefault();
@@ -97,43 +106,6 @@ export default function MentorsView() {
     { n: 3, label: "CURATOR POOL", value: "50%", valueClass: "text-white" },
     { n: 4, label: "TEE MODE", value: "ENFORCED", valueClass: "text-[#2dd4bf]", checkmark: true },
     { n: 5, label: "ATTESTATION STATUS", value: "⚠ 3 pending", valueClass: "text-[#fbbf24]", link: true },
-  ];
-
-  const recentActivity = [
-    {
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <rect x="2" y="1" width="8" height="11" rx="1" stroke="#6b7280" strokeWidth="1.1" />
-          <line x1="4" y1="5" x2="8" y2="5" stroke="#6b7280" strokeWidth="0.9" />
-          <line x1="4" y1="7" x2="8" y2="7" stroke="#6b7280" strokeWidth="0.9" />
-          <line x1="4" y1="9" x2="6.5" y2="9" stroke="#6b7280" strokeWidth="0.9" />
-        </svg>
-      ),
-      title: "IndoRegulator_01 updated",
-      detail: "12 files added • 3 gaps remaining",
-      time: "2h ago",
-    },
-    {
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M9 2.5L11.5 5L5 11.5H2.5V9L9 2.5Z" stroke="#6b7280" strokeWidth="1.1" fill="none" />
-          <path d="M7.5 4L10 6.5" stroke="#6b7280" strokeWidth="0.9" />
-        </svg>
-      ),
-      title: "ExportOps_APAC e-sign requested",
-      detail: "Awaiting 2 curator attestations",
-      time: "1d ago",
-    },
-    {
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1.5L8.5 5.5H12.5L9.5 7.8L10.5 12L7 9.8L3.5 12L4.5 7.8L1.5 5.5H5.5Z" stroke="#6b7280" strokeWidth="1.1" fill="none" />
-        </svg>
-      ),
-      title: "DeFiTax_Advisor passed preview",
-      detail: "Confidence improved to 96%",
-      time: "3d ago",
-    },
   ];
 
   return (
@@ -393,10 +365,12 @@ export default function MentorsView() {
             </div>
 
             <div className="flex flex-col gap-3">
-              {recentActivity.map((item) => (
-                <div key={item.title} className="flex items-start gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-[#2a2d32] bg-[#101215]">
-                    {item.icon}
+              {recentActivity.length === 0 ? (
+                <div className="py-6 text-center text-[11px] text-[#4b5563]">No on-chain mentor activity yet.</div>
+              ) : recentActivity.map((item) => (
+                <div key={`${item.txHash}-${item.type}-${item.tokenId}`} className="flex items-start gap-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-[#2a2d32] bg-[#101215] text-[12px] text-[#2dd4bf]">
+                    {item.type === "MentorRegistered" ? "⬡" : item.type === "StorageRefUpdated" ? "▣" : "✓"}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-semibold text-white">{item.title}</p>

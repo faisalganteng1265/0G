@@ -201,6 +201,15 @@ export const inftAbi = [
     ],
   },
   {
+    type: "event",
+    name: "StatusChanged",
+    inputs: [
+      { name: "tokenId", type: "uint256", indexed: true },
+      { name: "oldStatus", type: "uint8", indexed: false },
+      { name: "newStatus", type: "uint8", indexed: false },
+    ],
+  },
+  {
     type: "function",
     name: "mentors",
     stateMutability: "view",
