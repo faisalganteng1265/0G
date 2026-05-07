@@ -244,6 +244,73 @@ export function useGapEvents() {
   });
 }
 
+const mentorStatusLabels = ["DRAFT", "REVIEW", "READY", "SUSPENDED"] as const;
+
+export function useMentorActivityEvents() {
+  const publicClient = usePublicClient();
+
+  return useQuery({
+    queryKey: ["mentor-activity-events", publicClient?.chain?.id, MARKETPLACE_ADDRESS, INFT_ADDRESS],
+    enabled: Boolean(publicClient && hasMarketplaceAddress && hasInftAddress),
+    queryFn: async () => {
+      if (!publicClient) return [];
+      const currentBlock = await publicClient.getBlockNumber();
+      const fromBlock = currentBlock > BigInt(100_000) ? currentBlock - BigInt(100_000) : BigInt(0);
+      const [registered, storageUpdates, statusChanges] = await Promise.all([
+        publicClient.getLogs({
+          address: MARKETPLACE_ADDRESS,
+          event: marketplaceAbi[0],
+          fromBlock,
+          toBlock: "latest",
+        }),
+        publicClient.getLogs({
+          address: INFT_ADDRESS,
+          event: inftAbi[0],
+          fromBlock,
+          toBlock: "latest",
+        }),
+        publicClient.getLogs({
+          address: INFT_ADDRESS,
+          event: inftAbi[4],
+          fromBlock,
+          toBlock: "latest",
+        }),
+      ]);
+
+      return [
+        ...registered.map((log) => ({
+          type: "MentorRegistered" as const,
+          tokenId: Number(log.args.tokenId ?? 0),
+          title: `${String(log.args.name ?? "Mentor")} minted`,
+          detail: `Creator ${shortAddress(log.args.creator)}`,
+          txHash: log.transactionHash,
+          blockNumber: log.blockNumber,
+        })),
+        ...storageUpdates.map((log) => ({
+          type: "StorageRefUpdated" as const,
+          tokenId: Number(log.args.tokenId ?? 0),
+          title: `Knowledge updated`,
+          detail: `Confidence ${Number(log.args.newConfidence ?? 0)}%`,
+          txHash: log.transactionHash,
+          blockNumber: log.blockNumber,
+        })),
+        ...statusChanges.map((log) => {
+          const oldStatus = Number(log.args.oldStatus ?? 0);
+          const newStatus = Number(log.args.newStatus ?? 0);
+          return {
+            type: "StatusChanged" as const,
+            tokenId: Number(log.args.tokenId ?? 0),
+            title: `Status changed to ${mentorStatusLabels[newStatus] ?? "UNKNOWN"}`,
+            detail: `${mentorStatusLabels[oldStatus] ?? "UNKNOWN"} -> ${mentorStatusLabels[newStatus] ?? "UNKNOWN"}`,
+            txHash: log.transactionHash,
+            blockNumber: log.blockNumber,
+          };
+        }),
+      ].sort((a, b) => Number(b.blockNumber - a.blockNumber));
+    },
+  });
+}
+
 export function useSecurityEvents() {
   const publicClient = usePublicClient();
 
