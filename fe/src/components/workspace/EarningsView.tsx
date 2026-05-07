@@ -236,7 +236,7 @@ export default function EarningsView() {
           {vestingRows.length === 0 ? (
             <div className="py-8 text-center text-[11px] text-[#4b5563]">No mentors found. Register a mentor first.</div>
           ) : vestingRows.map(([mentor, subtitle, unlock, date, amount, progress, tokenId], index) => (
-            <VestingRow key={mentor} row={{ mentor, subtitle, unlock, date, amount, progress, tokenId }} index={index} />
+            <VestingRow key={tokenId} row={{ mentor, subtitle, unlock, date, amount, progress, tokenId }} index={index} />
           ))}
           <button className="mt-4 flex w-full items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">VIEW ALL VESTING <span>›</span></button>
         </div>

@@ -40,6 +40,14 @@ export default function MentorsView() {
     tokenId: mentor.tokenId,
     image: mentorImages[index % mentorImages.length],
   }));
+  const knowledgeVaultFiles = mentors.filter((mentor) => mentor.description && mentor.description !== "Knowledge upload pending.").length;
+  const avgConfidence =
+    mentors.length > 0
+      ? mentors.reduce((sum, mentor) => sum + mentor.confidence, 0) / mentors.length
+      : 0;
+  const avgConfidenceLabel = mentors.length > 0 ? `${avgConfidence.toFixed(1)}%` : "0%";
+  const pendingESign = mentors.filter((mentor) => mentor.status === "REVIEW").length;
+  const activeDrafts = mentors.filter((mentor) => mentor.status === "DRAFT").length;
 
   async function mintMentor(event: FormEvent) {
     event.preventDefault();
@@ -143,7 +151,7 @@ export default function MentorsView() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Knowledge Vault Files</p>
-              <p className="text-[22px] font-bold leading-none text-white">128</p>
+              <p className="text-[22px] font-bold leading-none text-white">{knowledgeVaultFiles}</p>
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="shrink-0 text-[10px] text-[#707b89]">Encrypted &amp; stored</p>
                 <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
@@ -163,11 +171,11 @@ export default function MentorsView() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Avg Confidence</p>
-              <p className="text-[22px] font-bold leading-none text-white">91.6%</p>
+              <p className="text-[22px] font-bold leading-none text-white">{avgConfidenceLabel}</p>
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="shrink-0 text-[10px] text-[#707b89]">Preview confidence</p>
                 <div className="h-[3px] w-[86px] shrink-0 rounded-full bg-[#1f2937]">
-                  <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,#22d3ee,#2dd4bf)]" style={{ width: "91.6%" }} />
+                  <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,#22d3ee,#2dd4bf)]" style={{ width: `${avgConfidence}%` }} />
                 </div>
               </div>
             </div>
@@ -183,7 +191,7 @@ export default function MentorsView() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Pending E-Sign</p>
-              <p className="text-[22px] font-bold leading-none text-white">3</p>
+              <p className="text-[22px] font-bold leading-none text-white">{pendingESign}</p>
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="shrink-0 text-[10px] text-[#707b89]">Attestations pending</p>
                 <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
@@ -204,7 +212,7 @@ export default function MentorsView() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Active Drafts</p>
-              <p className="text-[22px] font-bold leading-none text-white">5</p>
+              <p className="text-[22px] font-bold leading-none text-white">{activeDrafts}</p>
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="shrink-0 text-[10px] text-[#707b89]">In progress</p>
                 <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
@@ -237,7 +245,7 @@ export default function MentorsView() {
               </div>
             )}
             {mentors.map((mentor) => (
-              <div key={mentor.name} className="border-b border-[rgba(96,165,250,0.13)] p-3 last:border-b-0">
+              <div key={mentor.tokenId} className="border-b border-[rgba(96,165,250,0.13)] p-3 last:border-b-0">
                 <div className="grid gap-3 md:grid-cols-[72px_minmax(0,1fr)_270px]">
                   {/* Thumbnail */}
                   <div

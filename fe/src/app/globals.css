@@ -117,6 +117,42 @@ a {
   height: 3rem !important;
 }
 
+.thinking-dot {
+  display: inline-block;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 999px;
+  background: #2dd4bf;
+  box-shadow: 0 0 10px rgba(45, 212, 191, 0.42);
+  animation: thinking-dot-bounce 980ms ease-in-out infinite;
+}
+
+.thinking-dot-one {
+  animation-delay: 0ms;
+}
+
+.thinking-dot-two {
+  animation-delay: 140ms;
+}
+
+.thinking-dot-three {
+  animation-delay: 280ms;
+}
+
+@keyframes thinking-dot-bounce {
+  0%,
+  80%,
+  100% {
+    opacity: 0.42;
+    transform: translateY(0) scale(0.86);
+  }
+
+  36% {
+    opacity: 1;
+    transform: translateY(-0.34rem) scale(1);
+  }
+}
+
 .dashboard-content {
   scrollbar-color: transparent transparent;
   scrollbar-width: thin;

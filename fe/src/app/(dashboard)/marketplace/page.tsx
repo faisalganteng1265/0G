@@ -274,6 +274,221 @@ type ChatMessage = {
   meta?: string;
 };
 
+type MarkdownBlock =
+  | { type: "text"; content: string }
+  | { type: "code"; content: string; language?: string }
+  | { type: "heading"; content: string; level: 1 | 2 | 3 }
+  | { type: "quote"; content: string }
+  | { type: "list"; ordered: boolean; items: string[] };
+
+function parseMarkdownBlocks(text: string): MarkdownBlock[] {
+  const lines = text.split("\n");
+  const blocks: MarkdownBlock[] = [];
+  let textLines: string[] = [];
+  let codeLines: string[] = [];
+  let fence: "```" | "'''" | null = null;
+  let language: string | undefined;
+
+  function flushText() {
+    if (textLines.length === 0) return;
+    blocks.push({ type: "text", content: textLines.join("\n") });
+    textLines = [];
+  }
+
+  function parseList(startIndex: number, ordered: boolean) {
+    const items: string[] = [];
+    let cursor = startIndex;
+    const marker = ordered ? /^\s*\d+\.\s+(.+)$/ : /^\s*[-*]\s+(.+)$/;
+
+    while (cursor < lines.length) {
+      const itemMatch = lines[cursor].match(marker);
+      if (!itemMatch) break;
+      items.push(itemMatch[1]);
+      cursor += 1;
+    }
+
+    blocks.push({ type: "list", ordered, items });
+    return cursor - 1;
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    const startsBacktickFence = trimmed.startsWith("```");
+    const startsApostropheFence = trimmed.startsWith("'''");
+
+    if (fence) {
+      if (trimmed.startsWith(fence)) {
+        blocks.push({ type: "code", content: codeLines.join("\n"), language });
+        codeLines = [];
+        fence = null;
+        language = undefined;
+      } else {
+        codeLines.push(line);
+      }
+      continue;
+    }
+
+    if (startsBacktickFence || startsApostropheFence) {
+      flushText();
+      fence = startsBacktickFence ? "```" : "'''";
+      language = trimmed.slice(3).trim().split(/\s+/)[0] || undefined;
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      flushText();
+      blocks.push({
+        type: "heading",
+        content: headingMatch[2],
+        level: headingMatch[1].length as 1 | 2 | 3,
+      });
+      continue;
+    }
+
+    if (trimmed.startsWith(">")) {
+      flushText();
+      blocks.push({ type: "quote", content: trimmed.replace(/^>\s?/, "") });
+      continue;
+    }
+
+    if (/^\s*[-*]\s+/.test(line)) {
+      flushText();
+      index = parseList(index, false);
+      continue;
+    }
+
+    if (/^\s*\d+\.\s+/.test(line)) {
+      flushText();
+      index = parseList(index, true);
+      continue;
+    }
+
+    textLines.push(line);
+  }
+
+  if (fence) {
+    blocks.push({ type: "code", content: codeLines.join("\n"), language });
+  }
+  flushText();
+
+  return blocks;
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const pattern = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`|\*[^*\n]+\*)/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > cursor) nodes.push(text.slice(cursor, match.index));
+
+    const token = match[0];
+    const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      const href = linkMatch[2].trim();
+      const isSafeHref = /^(https?:|mailto:)/i.test(href);
+      nodes.push(
+        isSafeHref ? (
+          <a key={`link-${match.index}`} className="font-bold text-[#67e8f9] underline decoration-[#2dd4bf]/45 underline-offset-4" href={href} rel="noreferrer" target="_blank">
+            {linkMatch[1]}
+          </a>
+        ) : (
+          linkMatch[1]
+        )
+      );
+    } else if (token.startsWith("**")) {
+      nodes.push(
+        <strong key={`bold-${match.index}`} className="font-extrabold text-white">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else if (token.startsWith("`")) {
+      nodes.push(
+        <code key={`inline-code-${match.index}`} className="rounded border border-[#26333d] bg-[#0d1114] px-1.5 py-0.5 text-[0.92em] text-[#67e8f9]">
+          {token.slice(1, -1)}
+        </code>
+      );
+    } else {
+      nodes.push(
+        <em key={`italic-${match.index}`} className="italic text-[#cbd5e1]">
+          {token.slice(1, -1)}
+        </em>
+      );
+    }
+
+    cursor = match.index + token.length;
+  }
+
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return nodes;
+}
+
+function MarkdownMessage({ text }: { text: string }) {
+  return (
+    <div className="space-y-3">
+      {parseMarkdownBlocks(text).map((block, blockIndex) => {
+        if (block.type === "code") {
+          return (
+            <div key={`code-${blockIndex}`} className="overflow-hidden rounded border border-[rgba(45,212,191,0.2)] bg-[#06090b]">
+              {block.language && (
+                <div className="border-b border-[#1f2937] bg-[#0b1115] px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[#2dd4bf]">
+                  {block.language}
+                </div>
+              )}
+              <pre className="overflow-x-auto p-3 text-[11px] leading-[1.7] text-[#d1d5db]">
+                <code>{block.content}</code>
+              </pre>
+            </div>
+          );
+        }
+
+        if (block.type === "heading") {
+          const headingClass =
+            block.level === 1
+              ? "text-base"
+              : block.level === 2
+                ? "text-sm"
+                : "text-xs";
+
+          return (
+            <p key={`heading-${blockIndex}`} className={`${headingClass} font-extrabold leading-tight text-white`}>
+              {renderInlineMarkdown(block.content)}
+            </p>
+          );
+        }
+
+        if (block.type === "quote") {
+          return (
+            <blockquote key={`quote-${blockIndex}`} className="border-l-2 border-[#2dd4bf] bg-[#0b1115] px-3 py-2 text-[#cbd5e1]">
+              {renderInlineMarkdown(block.content)}
+            </blockquote>
+          );
+        }
+
+        if (block.type === "list") {
+          const ListTag = block.ordered ? "ol" : "ul";
+          return (
+            <ListTag key={`list-${blockIndex}`} className={`space-y-1 ${block.ordered ? "list-decimal" : "list-disc"} pl-5`}>
+              {block.items.map((item, itemIndex) => (
+                <li key={`${item}-${itemIndex}`}>{renderInlineMarkdown(item)}</li>
+              ))}
+            </ListTag>
+          );
+        }
+
+        return block.content.split(/\n{2,}/).map((paragraph, paragraphIndex) => (
+          <p key={`text-${blockIndex}-${paragraphIndex}`} className="whitespace-pre-wrap">
+            {renderInlineMarkdown(paragraph)}
+          </p>
+        ));
+      })}
+    </div>
+  );
+}
+
 function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: () => void }) {
   const { address } = useAccount();
   const { signMessageAsync } = useSignMessage();
@@ -368,7 +583,7 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
                         : "mx-auto border-[#374151] bg-[#0d1114] text-[#8b95a3]"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{message.text}</p>
+                  <MarkdownMessage text={message.text} />
                   {message.meta && (
                     <p className="mt-2 border-t border-[#1f2937] pt-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">
                       {message.meta}
@@ -377,8 +592,13 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
                 </div>
               ))}
               {busy && (
-                <div className="w-fit rounded border border-[#374151] bg-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">
-                  Signing, settling, then querying TEE...
+                <div className="flex w-fit items-center gap-2 rounded border border-[rgba(96,165,250,0.18)] bg-black px-3 py-2 text-xs font-bold text-[#d1d5db]">
+                  <span>Thinking</span>
+                  <span className="flex items-end gap-1" aria-hidden="true">
+                    <span className="thinking-dot thinking-dot-one" />
+                    <span className="thinking-dot thinking-dot-two" />
+                    <span className="thinking-dot thinking-dot-three" />
+                  </span>
                 </div>
               )}
             </div>

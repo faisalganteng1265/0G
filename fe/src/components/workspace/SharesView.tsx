@@ -75,6 +75,7 @@ export default function SharesView() {
       return {
         color: ALLOCATION_COLORS[i % ALLOCATION_COLORS.length],
         name: item.mentor.name,
+        tokenId: item.mentor.tokenId,
         value: formatOg(item.value),
         pct: `${pct.toFixed(1)}%`,
         start,
@@ -215,8 +216,8 @@ export default function SharesView() {
             <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.2)]">
               {allocationItems.length === 0 ? (
                 <div className="px-4 py-6 text-center text-[11px] text-[#4b5563]">Buy shares to see allocation.</div>
-              ) : allocationItems.map(({ color, name, value, pct }) => (
-                <div key={name} className="grid grid-cols-[14px_1fr_auto] items-center gap-3 border-b border-[rgba(96,165,250,0.15)] px-4 py-3 last:border-b-0">
+              ) : allocationItems.map(({ color, name, tokenId, value, pct }) => (
+                <div key={tokenId} className="grid grid-cols-[14px_1fr_auto] items-center gap-3 border-b border-[rgba(96,165,250,0.15)] px-4 py-3 last:border-b-0">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
                   <span>
                     <span className="block text-[11px] font-bold text-white">{name}</span>
@@ -242,7 +243,7 @@ export default function SharesView() {
           {sharePositions.length === 0 ? (
             <div className="py-8 text-center text-[11px] text-[#4b5563]">No mentors on-chain yet. Buy shares from the Marketplace.</div>
           ) : sharePositions.map((row) => (
-            <SharePositionRow key={row.mentor} row={row} user={address} />
+            <SharePositionRow key={row.tokenId} row={row} user={address} />
           ))}
           <p className="mt-3 text-[10px] text-[#707b89]">Showing 3 of 3 positions</p>
         </div>
