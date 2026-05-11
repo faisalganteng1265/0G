@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="fe/public/Dasboard.png" alt="AIMentor.X" width="720" />
+  <img src="fe/public/Dasboard.png" alt="Tacit" width="720" />
 </p>
 
-<h1 align="center">AIMentor.X</h1>
+<h1 align="center">Tacit</h1>
 
 <p align="center">
   <strong>The first marketplace for knowledge that isn't on the internet.</strong><br/>
@@ -29,7 +29,7 @@
 
 ## Overview
 
-AIMentor.X is a marketplace for the knowledge that is **deliberately not on the internet** — regulatory tactics, founder playbooks, deal mechanics, insider patterns. Experts mint themselves as **Intelligent NFTs** on 0G Chain, fans buy fractional **access shares** along a bonding curve, and every query is answered inside a **TEE on 0G Compute** so even the operator can never read the knowledge base.
+Tacit is a marketplace for the knowledge that is **deliberately not on the internet** — regulatory tactics, founder playbooks, deal mechanics, insider patterns. Experts mint themselves as **Intelligent NFTs** on 0G Chain, fans buy fractional **access shares** along a bonding curve, and every query is answered inside a **TEE on 0G Compute** so even the operator can never read the knowledge base.
 
 Built end-to-end on **0G's modular AI x Web3 stack** — agents are minted as iNFTs (ERC-7857) on 0G Chain, knowledge is encrypted and Merkle-rooted on 0G Storage, inference is sealed and attested on 0G Compute, and revenue flows through a non-custodial royalty + vesting escrow.
 
@@ -53,13 +53,13 @@ Today, the most valuable knowledge sits in a few hundred heads and has no moneti
 | Friend.tech-style social tokens | Pure speculation, no underlying utility, no upgrade path |
 | LLM fine-tunes on private data | Operator can exfiltrate; no royalty path; no privacy guarantee |
 
-AIMentor.X is the first design where the expert earns **forever**, the fan owns **economic upside**, and the learner gets **verifiable confidentiality** — in a single primitive.
+Tacit is the first design where the expert earns **forever**, the fan owns **economic upside**, and the learner gets **verifiable confidentiality** — in a single primitive.
 
 ---
 
 ## How It Works
 
-> Scenario: a former regulator has 12 years of tactical insight into Indonesian compliance loopholes. She cannot publish it. AIMentor.X lets her tokenize it.
+> Scenario: a former regulator has 12 years of tactical insight into Indonesian compliance loopholes. She cannot publish it. Tacit lets her tokenize it.
 
 1. **Mint Mentor iNFT** — she connects her wallet, mints an `AIMentorINFT` (ERC-7857), retaining 50% of initial shares.
 2. **Upload Encrypted Knowledge** — her framework is encrypted client-side, uploaded to 0G Storage; only the Merkle root (`storageRef`) is anchored on-chain.
@@ -166,9 +166,9 @@ flowchart LR
 
 ## 0G Integration
 
-AIMentor.X is structurally inseparable from the 0G stack. Removing any one of the four primitives breaks a core invariant — there is no "AWS fallback" path.
+Tacit is structurally inseparable from the 0G stack. Removing any one of the four primitives breaks a core invariant — there is no "AWS fallback" path.
 
-| 0G Layer | How AIMentor.X Uses It | Files |
+| 0G Layer | How Tacit Uses It | Files |
 |---|---|---|
 | **0G Chain** | All 6 contracts deployed on mainnet `16661`. iNFT custody, bonding curve, atomic revenue split, vesting, and oracle signaling all settle here. | `sc/src/*.sol` |
 | **0G Storage** | Mentor knowledge encrypted client-side and pushed to `indexer-storage-turbo.0g.ai`; root hash anchored on-chain in `AIMentorINFT.storageRef`. KV for live updates, Log for immutable archive. | `be/src/lib/storage.ts`, `be/src/routes/upload.ts` |
@@ -242,7 +242,7 @@ Submission to the **0G APAC Hackathon** (March–May 2026), targeting **Track 4:
 | Architecture & docs | This README |
 | Local reproduction steps | See [Local Development](#local-development) |
 
-**Why AIMentor.X fits the 0G thesis:** the product depends on every flagship 0G primitive — chain, storage, compute, agent identity, sealed execution — to make a non-custodial expert marketplace possible. Without 0G, there is no verifiable knowledge gating, no private inference, and no transferable AI identity.
+**Why Tacit fits the 0G thesis:** the product depends on every flagship 0G primitive — chain, storage, compute, agent identity, sealed execution — to make a non-custodial expert marketplace possible. Without 0G, there is no verifiable knowledge gating, no private inference, and no transferable AI identity.
 
 ---
 

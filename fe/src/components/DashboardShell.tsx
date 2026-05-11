@@ -138,7 +138,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
       <footer className="flex shrink-0 items-center justify-between rounded-lg border border-[#2a2d32] bg-[#050607]/95 px-6 py-2.5 shadow-2xl shadow-black/30">
         <p className="text-[9px] tracking-[0.1em] text-[#374151]">
-          © 2026 AIMENTOR.X. POWERED BY 0G_PROTOCOL.
+          © 2026 TACIT. POWERED BY 0G_PROTOCOL.
         </p>
         <div className="hidden gap-5 sm:flex">
           {["0G HACKATHON", "DOCUMENTATION", "SECURITY AUDIT", "GITHUB"].map((link) => (
