@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AIMentor.X",
-  description: "AI mentor marketplace powered by 0G.",
+  title: "Tacit",
+  description: "Tokenize the knowledge that isn't on the internet. Powered by 0G.",
 };
 
 export default function RootLayout({

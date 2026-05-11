@@ -11,7 +11,7 @@ const walletConnectProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "0gide1-dev";
 
 const wagmiConfig = getDefaultConfig({
-  appName: "AIMentor.X",
+  appName: "Tacit",
   projectId: walletConnectProjectId,
   chains: [zeroGMainnet, zeroGGalileo],
   ssr: true,
