@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { MouseEvent } from "react";
 
-const sidebarLinks = [
+export const sidebarLinks = [
   { label: "MARKETPLACE", icon: "⊞", href: "/marketplace" },
   { label: "MY MENTORS", icon: "⬡", href: "/my-mentors" },
   { label: "MY SHARES", icon: "◈", href: "/my-shares" },
@@ -42,7 +42,7 @@ export default function MarketplaceSidebar() {
   }
 
   return (
-    <aside className="flex h-full w-[230px] shrink-0 flex-col justify-between overflow-hidden rounded-lg border border-[#2a2d32] bg-[#050607]/95 py-5 shadow-2xl shadow-black/30">
+    <aside className="hidden md:flex h-full w-[230px] shrink-0 flex-col justify-between overflow-hidden rounded-lg border border-[#2a2d32] bg-[#050607]/95 py-5 shadow-2xl shadow-black/30">
       <div>
         <div className="flex items-center gap-3 px-5 pb-4">
           <div

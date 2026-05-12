@@ -1,10 +1,12 @@
 "use client";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { ReactNode, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { MouseEvent, ReactNode, useRef, useState } from "react";
 
 import Dither from "@/components/Dither";
-import MarketplaceSidebar from "@/components/MarketplaceSidebar";
+import MarketplaceSidebar, { sidebarLinks } from "@/components/MarketplaceSidebar";
 
 interface DashboardShellProps {
   children: ReactNode;
@@ -12,7 +14,10 @@ interface DashboardShellProps {
 
 export default function DashboardShell({ children }: DashboardShellProps) {
   const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const scrollbarTimeoutRef = useRef<number | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
 
   function handleMainScroll() {
     setIsScrollbarVisible(true);
@@ -24,6 +29,26 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     scrollbarTimeoutRef.current = window.setTimeout(() => {
       setIsScrollbarVisible(false);
     }, 900);
+  }
+
+  function handleMobileNavClick(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    setMobileMenuOpen(false);
+
+    if (pathname === href) {
+      event.preventDefault();
+      return;
+    }
+
+    const panel = document.querySelector(".route-panel-transition");
+
+    if (!panel) return;
+
+    event.preventDefault();
+    panel.classList.add("route-panel-transition--leaving");
+
+    window.setTimeout(() => {
+      router.push(href);
+    }, 180);
   }
 
   return (
@@ -50,6 +75,22 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-[#374151] bg-[#141a1f] md:hidden"
+            type="button"
+            aria-label="Toggle menu"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+          >
+            {mobileMenuOpen ? (
+              <svg width="14" height="14" fill="none" stroke="#9ca3af" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" fill="none" stroke="#9ca3af" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
           <div className="hidden items-center gap-1.5 rounded border border-[#374151] bg-[#141a1f] px-2.5 py-1.5 sm:flex">
             <svg width="12" height="12" fill="none" stroke="#6b7280" viewBox="0 0 24 24">
               <path
@@ -123,6 +164,37 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           </ConnectButton.Custom>
         </div>
       </header>
+
+      {mobileMenuOpen && (
+        <div className="shrink-0 overflow-y-auto rounded-lg border border-[#2a2d32] bg-[#050607]/95 px-3 py-3 shadow-2xl shadow-black/30 md:hidden">
+          <nav className="flex flex-col gap-1">
+            {sidebarLinks.map((link) => {
+              const isActive = pathname === link.href;
+
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={(e) => handleMobileNavClick(e, link.href)}
+                  className={`relative flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded border px-3.5 py-3 text-left font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
+                    isActive
+                      ? "border-[rgba(45,212,191,0.34)] bg-[linear-gradient(90deg,rgba(45,212,191,0.16),rgba(45,212,191,0.06))] text-[#2dd4bf] shadow-[inset_-3px_0_0_#2dd4bf,0_0_18px_rgba(45,212,191,0.12)]"
+                      : "border-transparent bg-transparent text-[#6b7280] hover:bg-[#101517] hover:text-[#9ca3af]"
+                  }`}
+                >
+                  <span className="text-[15px]">{link.icon}</span>
+                  {link.label}
+                  {isActive && (
+                    <span className="ml-auto text-[10px] font-extrabold text-[#2dd4bf]" aria-hidden="true">
+                      +
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         <MarketplaceSidebar />
