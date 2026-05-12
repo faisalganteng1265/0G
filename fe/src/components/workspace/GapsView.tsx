@@ -115,8 +115,8 @@ export default function GapsView() {
         <div className={`${panelClass} rounded-[7px] p-4`}>
           <div className="mb-4">
             <h2 className="mb-4 text-[13px] font-bold uppercase tracking-[0.08em] text-white">Priority Gap Queue</h2>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-start gap-2">
+              <div className="flex flex-wrap items-center gap-1">
                 {queueFilters.map(([label, count, tone]) => (
                   <button
                     key={label}
@@ -139,7 +139,7 @@ export default function GapsView() {
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-1">
                 <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">SORT BY</span>
                 <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`}>Priority (High → Low)⌄</button>
                 <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`}>▽</button>
@@ -147,7 +147,8 @@ export default function GapsView() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.14)]">
+          <div className="overflow-x-auto">
+          <div className="min-w-[700px] overflow-hidden rounded border border-[rgba(96,165,250,0.14)]">
             <div className="grid grid-cols-[1.75fr_0.7fr_0.65fr_0.65fr_0.5fr_0.65fr_0.8fr_0.78fr] gap-3 bg-[rgba(255,255,255,0.025)] px-3 py-2 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">
               <span>Gap / Source</span><span>Category</span><span>Priority</span><span>Confidence</span><span>Queries</span><span>Last Updated</span><span>Severity</span><span>Actions</span>
             </div>
@@ -193,6 +194,7 @@ export default function GapsView() {
                 </div>
               );
             })}
+          </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between text-[10px] text-[#707b89]">
@@ -276,14 +278,14 @@ export default function GapsView() {
               ["⌁", "Mentor Response SLA", "18h"],
               ["✥", "Citation Coverage", "58%"],
             ].map(([icon, label, value]) => (
-              <div key={label} className="mb-3 grid grid-cols-[22px_1fr_115px_42px_54px] items-center gap-2 text-[11px]">
+              <div key={label} className="mb-3 grid grid-cols-[22px_1fr_115px_42px] items-center gap-2 text-[11px] sm:grid-cols-[22px_1fr_115px_42px_54px]">
                 <span className="text-[#9ca3af]">{icon}</span>
                 <span className="text-[#d1d5db]">{label}</span>
                 <div className="h-[5px] rounded-full bg-[rgba(96,165,250,0.14)]">
                   <div className="h-[5px] rounded-full bg-[#2dd4bf]" style={{ width: value === "18h" ? "50%" : value }} />
                 </div>
                 <span className="text-right font-bold text-white">{value}</span>
-                <svg viewBox="0 0 54 18" className="h-4 w-[54px]" fill="none">
+                <svg viewBox="0 0 54 18" className="hidden h-4 w-[54px] sm:block" fill="none">
                   <path d="M0 11L5 8L10 13L15 4L20 10L25 6L30 13L35 5L40 10L45 4L54 8" stroke="#2dd4bf" strokeWidth="1.2" />
                 </svg>
               </div>

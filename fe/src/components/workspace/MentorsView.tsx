@@ -218,7 +218,7 @@ export default function MentorsView() {
             )}
             {mentors.map((mentor) => (
               <div key={mentor.tokenId} className="border-b border-[rgba(96,165,250,0.13)] p-3 last:border-b-0">
-                <div className="grid gap-3 md:grid-cols-[72px_minmax(0,1fr)_270px]">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[72px_minmax(0,1fr)_270px]">
                   {/* Thumbnail */}
                   <div
                     className="h-[78px] w-full shrink-0 rounded border border-[rgba(96,165,250,0.25)] bg-[#071014] bg-cover bg-center shadow-[0_0_18px_rgba(45,212,191,0.08)]"
@@ -260,7 +260,7 @@ export default function MentorsView() {
                   </div>
 
                   {/* Right: stats + button + menu */}
-                  <div className="flex shrink-0 items-center justify-end gap-4">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-4">
                     <div className="grid grid-cols-[44px_44px_92px] items-center gap-4">
                       <div className="text-center">
                         <p className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">DOCS</p>

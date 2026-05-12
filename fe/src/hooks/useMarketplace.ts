@@ -75,41 +75,14 @@ export function shortAddress(address?: string) {
 }
 
 export function useMentors() {
-  const publicClient = usePublicClient();
-
   return useQuery({
-    queryKey: ["mentors", publicClient?.chain?.id, MARKETPLACE_ADDRESS, INFT_ADDRESS],
-    enabled: Boolean(publicClient && hasMarketplaceAddress && hasInftAddress),
+    queryKey: ["mentors"],
     ...liveQueryOptions,
     queryFn: async () => {
-      if (!publicClient) return [];
-      const currentBlock = await publicClient.getBlockNumber();
-      const fromBlock = currentBlock > BigInt(100_000) ? currentBlock - BigInt(100_000) : BigInt(0);
-
-      const logs = await publicClient.getLogs({
-        address: MARKETPLACE_ADDRESS,
-        event: marketplaceAbi[0],
-        fromBlock,
-        toBlock: "latest",
-      });
-
-      const tokenIds = Array.from(
-        new Set(logs.map((log) => log.args.tokenId).filter((tokenId): tokenId is bigint => tokenId !== undefined)),
+      const result = await api.getMentors();
+      return (result.mentors as Array<Record<string, unknown>>).map((m) =>
+        normalizeMentor(BigInt(m.tokenId as number), m)
       );
-
-      const mentors = await Promise.all(
-        tokenIds.map(async (tokenId) => {
-          const meta = await publicClient.readContract({
-            address: INFT_ADDRESS,
-            abi: inftAbi,
-            functionName: "mentors",
-            args: [tokenId],
-          });
-          return normalizeMentor(tokenId, meta);
-        }),
-      );
-
-      return mentors.sort((a, b) => b.tokenId - a.tokenId);
     },
   });
 }

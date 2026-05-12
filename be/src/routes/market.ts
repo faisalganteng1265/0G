@@ -5,6 +5,7 @@ import { buildQueryAccessMessage } from "../lib/auth";
 import {
   buildBuySharesTx,
   buildExecuteQueryTx,
+  getAllMentors,
   getMarketAccess,
   getMarketQuote,
 } from "../lib/contracts";
@@ -37,6 +38,16 @@ const ExecuteQueryTxBody = TokenQuery.extend({
 const BuySharesTxBody = TokenQuery.extend({
   amount: z.coerce.number().int().positive(),
   valueWei: z.string().regex(/^\d+$/).optional(),
+});
+
+// GET /market/mentors — list all mentors from on-chain (paginated scan, cached 60s)
+router.get("/mentors", async (_req: Request, res: Response) => {
+  try {
+    const mentors = await getAllMentors();
+    res.json({ ok: true, mentors });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 // POST /market/query-message

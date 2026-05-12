@@ -245,6 +245,8 @@ export default function EarningsView() {
             <span className="text-[#8b95a3]">▢</span>
             <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Vesting Queue</h2>
           </div>
+          <div className="overflow-x-auto">
+          <div className="min-w-[500px]">
           <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] gap-3 border-b border-[rgba(96,165,250,0.14)] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">
             <span>Mentor / Package</span><span>Unlocks In</span><span>Amount</span><span>Progress</span><span>Claim Date</span>
           </div>
@@ -253,6 +255,8 @@ export default function EarningsView() {
           ) : vestingRows.map(([mentor, subtitle, unlock, date, amount, progress, tokenId], index) => (
             <VestingRow key={tokenId} row={{ mentor, subtitle, unlock, date, amount, progress, tokenId }} index={index} />
           ))}
+          </div>
+          </div>
           <button className="mt-4 flex w-full items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">VIEW ALL VESTING <span>›</span></button>
         </div>
 
@@ -261,6 +265,8 @@ export default function EarningsView() {
             <span className="text-[#8b95a3]">⌁</span>
             <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Recent Payout Activity</h2>
           </div>
+          <div className="overflow-x-auto">
+          <div className="min-w-[440px]">
           <div className="grid grid-cols-[1fr_1fr_0.6fr_0.7fr] gap-3 border-b border-[rgba(96,165,250,0.14)] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">
             <span>Event</span><span>Source</span><span>Time</span><span className="text-right">Amount</span>
           </div>
@@ -280,6 +286,8 @@ export default function EarningsView() {
               </div>
             );
           })}
+          </div>
+          </div>
           <button className="mt-4 flex w-full items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#2dd4bf]">VIEW ALL ACTIVITY <span>›</span></button>
         </div>
       </div>
@@ -324,7 +332,7 @@ function VestingRow({
   }
 
   return (
-    <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
+    <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px] min-w-[500px]">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#2dd4bf]/35 bg-[#2dd4bf]/10 text-[#2dd4bf]">{["◈", "⬢", "⬡", "⛨"][index % 4]}</div>
         <div>

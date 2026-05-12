@@ -56,6 +56,7 @@ export type QueryResponse = {
 };
 
 export const api = {
+  getMentors: () => request<{ ok: true; mentors: unknown[] }>("/market/mentors"),
   getAccess: (tokenId: number, userAddress: string) =>
     request<{ ok: true; access: MarketAccess }>(
       `/market/access?tokenId=${tokenId}&userAddress=${userAddress}`,

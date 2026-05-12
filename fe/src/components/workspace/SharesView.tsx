@@ -257,6 +257,8 @@ export default function SharesView() {
             <span className="text-[#2dd4bf]">◇</span>
             <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Share Positions</h2>
           </div>
+          <div className="overflow-x-auto">
+          <div className="min-w-[520px]">
           <div className="grid grid-cols-[1.35fr_0.9fr_0.8fr_0.75fr_0.8fr_1fr] gap-3 border-b border-[rgba(96,165,250,0.16)] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">
             <span>Mentor</span><span>Position</span><span>Share Price</span><span>Weekly Change</span><span>Rewards</span><span>Action</span>
           </div>
@@ -265,6 +267,8 @@ export default function SharesView() {
           ) : sharePositions.map((row) => (
             <SharePositionRow key={row.tokenId} row={row} user={address} />
           ))}
+          </div>
+          </div>
           <p className="mt-3 text-[10px] text-[#707b89]">Showing 3 of 3 positions</p>
         </div>
 
@@ -312,7 +316,8 @@ export default function SharesView() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.14)]">
+          <div className="overflow-x-auto">
+          <div className="min-w-[560px] overflow-hidden rounded border border-[rgba(96,165,250,0.14)]">
             <div className="grid grid-cols-[1.4fr_0.8fr_1fr_0.6fr_0.6fr_1fr] gap-3 bg-[rgba(255,255,255,0.025)] px-3 py-2 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">
               <span>Mentor</span><span>Share Price</span><span>Shares Sold</span><span>Status</span><span>Confidence</span><span>Action</span>
             </div>
@@ -350,6 +355,7 @@ export default function SharesView() {
                 </div>
               );
             })}
+          </div>
           </div>
 
           <div className="mt-3 flex items-center justify-between text-[10px] text-[#707b89]">

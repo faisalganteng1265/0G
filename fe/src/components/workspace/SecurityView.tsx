@@ -84,8 +84,8 @@ export default function SecurityView() {
             <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Audit Event Stream</h2>
           </div>
 
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-start gap-2">
+            <div className="flex flex-wrap items-center gap-1">
               {["ALL", "TEE", "ACCESS", "STORAGE", "E-SIGN", "ALERTS"].map((tab) => (
                 <button
                   key={tab}
@@ -99,14 +99,15 @@ export default function SecurityView() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-1">
               <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`}>▽ All Sources⌄</button>
               <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`}>Sort: Newest⌄</button>
               <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`}>☷</button>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.12)]">
+          <div className="overflow-x-auto">
+          <div className="min-w-[640px] overflow-hidden rounded border border-[rgba(96,165,250,0.12)]">
             <div className="grid grid-cols-[1fr_1.55fr_0.78fr_0.72fr_0.66fr_0.65fr_0.56fr] gap-3 bg-[rgba(255,255,255,0.025)] px-3 py-2 text-[8px] font-bold uppercase tracking-[0.12em] text-[#586474]">
               <span>Event</span><span>Detail</span><span>Proof</span><span>Source</span><span>Severity</span><span>Time</span><span>Actions</span>
             </div>
@@ -127,6 +128,7 @@ export default function SecurityView() {
                 </span>
               </div>
             ))}
+          </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between text-[10px] text-[#8b95a3]">

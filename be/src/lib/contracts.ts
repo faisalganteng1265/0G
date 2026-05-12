@@ -16,6 +16,7 @@ const INFT_ABI = [
 ];
 
 const MARKETPLACE_ABI = [
+  "event MentorRegistered(uint256 indexed tokenId, address indexed creator, string name)",
   "event QueryExecuted(uint256 indexed mentorId, address indexed querier)",
   "function buyShares(uint256 mentorId, uint32 amount) external payable",
   "function executeQuery(uint256 mentorId) external payable",
@@ -436,6 +437,78 @@ export async function triggerQueryRevenue(tokenId: number): Promise<string | nul
   await tx.wait();
   console.log(`[contracts] executeQuery tokenId=${tokenId} value=${queryPrice.toString()} tx=${tx.hash}`);
   return tx.hash as string;
+}
+
+// ---- getAllMentors: paginated scan dari deployment block ----
+const DEPLOYMENT_BLOCK = 30_000_000;
+const SCAN_CHUNK = 50_000;
+
+type MentorEntry = {
+  tokenId: number;
+  creator: string;
+  storageRef: string;
+  name: string;
+  category: string;
+  confidenceScore: number;
+  gapCount: number;
+  totalQueries: number;
+  status: number;
+  lastUpdatedAt: number;
+  mintedAt: number;
+};
+
+let mentorsCache: { data: MentorEntry[]; ts: number } | null = null;
+const MENTORS_CACHE_TTL = 60_000;
+
+export async function getAllMentors(): Promise<MentorEntry[]> {
+  if (mentorsCache && Date.now() - mentorsCache.ts < MENTORS_CACHE_TTL) {
+    return mentorsCache.data;
+  }
+
+  const provider = getProvider();
+  const marketplaceAddr = process.env.CONTRACT_MARKETPLACE;
+  const inftAddr = process.env.CONTRACT_INFT;
+  if (!marketplaceAddr || !inftAddr) throw new Error("CONTRACT_MARKETPLACE or CONTRACT_INFT not set");
+
+  const marketplace = new ethers.Contract(marketplaceAddr, MARKETPLACE_ABI, provider);
+  const currentBlock = await provider.getBlockNumber();
+  const tokenIds = new Set<number>();
+
+  for (let from = DEPLOYMENT_BLOCK; from <= currentBlock; from += SCAN_CHUNK) {
+    const to = Math.min(from + SCAN_CHUNK - 1, currentBlock);
+    try {
+      const logs = await marketplace.queryFilter(marketplace.filters.MentorRegistered(), from, to);
+      for (const log of logs) {
+        tokenIds.add(Number((log as ethers.EventLog).args.tokenId));
+      }
+    } catch {
+      // skip failed chunks
+    }
+  }
+
+  const inft = new ethers.Contract(inftAddr, INFT_ABI, provider);
+  const mentors = await Promise.all(
+    Array.from(tokenIds).map(async (tokenId) => {
+      const m = await inft.mentors(BigInt(tokenId));
+      return {
+        tokenId,
+        creator: m.creator as string,
+        storageRef: m.storageRef as string,
+        name: m.name as string,
+        category: m.category as string,
+        confidenceScore: Number(m.confidenceScore),
+        gapCount: Number(m.gapCount),
+        totalQueries: Number(m.totalQueries),
+        status: Number(m.status),
+        lastUpdatedAt: Number(m.lastUpdatedAt),
+        mintedAt: Number(m.mintedAt),
+      };
+    })
+  );
+
+  mentors.sort((a, b) => b.tokenId - a.tokenId);
+  mentorsCache = { data: mentors, ts: Date.now() };
+  return mentors;
 }
 
 // Baca metadata mentor dari on-chain

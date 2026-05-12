@@ -579,7 +579,7 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
           </button>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-[1fr_220px]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[1fr_220px]">
           <div className="flex min-h-0 flex-col">
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               {messages.map((message, index) => (
@@ -737,8 +737,8 @@ export default function MarketplacePage() {
   return (
     <>
           <div className="mb-5">
-            <div className="mb-4 flex items-start justify-between gap-6">
-              <div className="max-w-[610px] shrink-0">
+            <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between xl:gap-6">
+              <div className="xl:max-w-[610px] xl:shrink-0">
                 <h1 className="mb-2 text-2xl font-bold text-white">Marketplace Explorer</h1>
                 <p className="text-xs leading-[1.65] text-[#8b929d]">
                   Discover, analyze, and stake in elite AI mentors across specialized knowledge sectors.
@@ -746,7 +746,7 @@ export default function MarketplacePage() {
                 </p>
               </div>
 
-              <div className="grid flex-1 grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3 xl:flex-1 xl:grid-cols-4">
                 {liveStats.map((stat) => {
                   const StatIcon = stat.icon;
 
@@ -769,7 +769,7 @@ export default function MarketplacePage() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2">
               {filterOptions.map((filter) => {
                 const FilterIcon = filter.icon;
                 const isActive = activeFilter === filter.label;
@@ -778,13 +778,13 @@ export default function MarketplacePage() {
                   <button
                     key={filter.label}
                     onClick={() => setActiveFilter(filter.label)}
-                    className={`flex min-h-11 cursor-pointer items-center gap-2 rounded border px-5 py-2.5 font-mono text-[11px] font-bold tracking-[0.12em] transition-colors ${
+                    className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-2 font-mono text-[10px] font-bold tracking-[0.1em] transition-colors sm:gap-2 sm:px-5 sm:py-2.5 sm:text-[11px] sm:tracking-[0.12em] ${
                       isActive
                         ? "border-[rgba(45,212,191,0.7)] bg-[rgba(45,212,191,0.1)] text-[#2dd4bf] shadow-[0_0_16px_rgba(45,212,191,0.1)]"
                         : "border-[#1f2937] bg-black text-[#8b929d]"
                     }`}
                   >
-                    <FilterIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    <FilterIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
                     {filter.label}
                   </button>
                 );
@@ -792,7 +792,7 @@ export default function MarketplacePage() {
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-3 gap-4">
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {displayMentors.length === 0 ? (
               <div className="col-span-3 flex items-center justify-center rounded-lg border border-[#1f2937] bg-black py-16 text-[12px] font-mono text-[#586474]">
                 No mentors registered on-chain yet. Be the first — go to My Mentors.
@@ -802,7 +802,7 @@ export default function MarketplacePage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="rounded-lg border border-[rgba(45,212,191,0.22)] bg-black px-4 py-3 shadow-[inset_0_1px_0_rgba(45,212,191,0.08),0_0_28px_rgba(45,212,191,0.07)]">
               <div className="mb-2.5 flex items-center justify-between gap-4 border-b border-[#1a2630] pb-2.5">
                 <div className="flex items-center gap-2">
@@ -819,6 +819,8 @@ export default function MarketplacePage() {
                 </button>
               </div>
 
+              <div className="overflow-x-auto">
+              <div className="min-w-[520px]">
               <div className="grid grid-cols-[1.4fr_0.55fr_0.4fr_0.5fr_0.62fr_0.78fr] gap-3 border-b border-[#14212a] px-1 pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#5b6470]">
                 <span>REPORT</span>
                 <span>CATEGORY</span>
@@ -855,6 +857,8 @@ export default function MarketplacePage() {
                   ))
                 )}
               </div>
+              </div>
+              </div>
 
               <button className="mx-auto mt-2.5 flex min-h-0 items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">
                 VIEW ALL REPORTS
@@ -876,6 +880,8 @@ export default function MarketplacePage() {
                 </button>
               </div>
 
+              <div className="overflow-x-auto">
+              <div className="min-w-[380px]">
               <div className="grid grid-cols-[1.35fr_0.55fr_0.55fr_0.75fr] gap-3 border-b border-[#15202a] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#5b6470]">
                 <span>MENTOR</span>
                 <span>WEEKLY GAIN</span>
@@ -905,6 +911,8 @@ export default function MarketplacePage() {
                     </BuySharesButton>
                   </div>
                 ))}
+              </div>
+              </div>
               </div>
 
               <button className="mx-auto mt-2.5 flex items-center gap-2 border-0 bg-transparent font-mono text-[10px] font-bold tracking-[0.12em] text-[#9ca3af]">
