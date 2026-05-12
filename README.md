@@ -250,13 +250,13 @@ Submission to the **0G APAC Hackathon** (March–May 2026), targeting **Track 4:
 
 | Contract | Address | Purpose |
 |---|---|---|
-| `MentorMarketplace` | `<TBD_MARKETPLACE>` | Orchestrator: mint, query settlement, oracle hub |
-| `AIMentorINFT` | `<TBD_INFT>` | ERC-7857 iNFT: mentor identity + sealed key custody |
-| `AccessSharesMarket` | `<TBD_SHARES>` | Bonding curve trading for access shares |
-| `RevenueDistributor` | `<TBD_REV>` | Atomic per-query royalty + dividend split |
-| `VestingEscrow` | `<TBD_VEST>` | 30-day vesting + claw-back on gap escalation |
+| `MentorMarketplace` | [`0xa23BE1297F836FF7D4E3297320ff16dbc7903e6D`](https://chainscan.0g.ai/address/0xa23BE1297F836FF7D4E3297320ff16dbc7903e6D) | Orchestrator: mint, query settlement, oracle hub |
+| `AIMentorINFT` | [`0x4d107C58DCda55ea6ea2B162d9C434F710E42038`](https://chainscan.0g.ai/address/0x4d107C58DCda55ea6ea2B162d9C434F710E42038) | ERC-7857 iNFT: mentor identity + sealed key custody |
+| `AccessSharesMarket` | [`0x6E860FF2C4ea6b01815D74E54859Cdd9DD172256`](https://chainscan.0g.ai/address/0x6E860FF2C4ea6b01815D74E54859Cdd9DD172256) | Bonding curve trading for access shares |
+| `RevenueDistributor` | [`0x5064796857Ff61482B57017B87C548f46045D256`](https://chainscan.0g.ai/address/0x5064796857Ff61482B57017B87C548f46045D256) | Atomic per-query royalty + dividend split |
+| `VestingEscrow` | [`0x57AA49B4e144f252dA9E21a5cB096EFe76B3Dc55`](https://chainscan.0g.ai/address/0x57AA49B4e144f252dA9E21a5cB096EFe76B3Dc55) | 30-day vesting + claw-back on gap escalation |
 
-**Demo:** first mentor minted → tokenId `<TBD>` · first paid query → tx `<TBD_TX>`
+> Deployed on 0G Aristotle Mainnet (Chain ID `16661`) — 2026-05-06
 
 ---
 
