@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+:root {
+  --font-clash: 'Clash Display', sans-serif;
+  --font-satoshi: 'Satoshi', sans-serif;
+}
+
+/* Landing page typography */
+.landing-page h1,
+.landing-page h2,
+.landing-page h3,
+.landing-page .clash {
+  font-family: var(--font-clash);
+}
+
+/* Nav/footer logo */
+.clash-text {
+  font-family: var(--font-clash);
+  letter-spacing: -0.01em;
+}
+
 * {
   box-sizing: border-box;
 }

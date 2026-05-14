@@ -156,7 +156,7 @@ function CardContent({ card, align = "left" }: { card: typeof STACK_CARDS[0]; al
         style={{ color: card.color, background: card.glowColor, border: `1px solid ${card.borderColor}` }}>
         {card.icon} {card.tag}
       </span>
-      <h3 className="font-extrabold leading-[1.06] tracking-[-0.025em] text-white whitespace-pre-line"
+      <h3 className="clash font-extrabold leading-[1.06] tracking-[-0.025em] text-white whitespace-pre-line"
         style={{ fontSize: "clamp(34px,5vw,64px)" }}>
         {card.headline}
       </h3>
@@ -235,11 +235,11 @@ function ScrollStack() {
             let ty = 0, opacity = 1;
 
             if (offset > 0) {
-              ty = Math.min(offset * 110, 220);
-              opacity = Math.max(0, 1 - offset * 0.65);
+              ty = Math.min(offset * 90, 180);
+              opacity = Math.max(0, 1 - offset * 4); // invisible past offset 0.25
             } else if (offset < 0) {
               ty = Math.max(offset * 70, -140);
-              opacity = Math.max(0, 1 + offset * 1.3);
+              opacity = Math.max(0, 1 + offset * 4); // invisible past offset -0.25
             }
 
             return (
@@ -363,14 +363,14 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <main className="bg-[#0b0d0f] text-[#d1d5db] font-mono [overflow-x:clip]">
+    <main className="landing-page bg-[#0b0d0f] text-[#d1d5db] [overflow-x:clip]" style={{ fontFamily: "var(--font-satoshi), var(--font-geist-sans), sans-serif" }}>
 
       {/* ── Nav ── */}
       <nav className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
         style={{ background: scrolled ? "rgba(11,13,15,0.94)" : "transparent", borderBottom: scrolled ? "1px solid #141a1f" : "1px solid transparent", backdropFilter: scrolled ? "blur(14px)" : "none" }}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <span className="text-[15px] font-extrabold tracking-[0.22em] text-white">TAC<span className="text-[#2dd4bf]">IT</span></span>
+          <span className="clash-text text-[16px] font-extrabold tracking-[0.18em] text-white">TAC<span className="text-[#2dd4bf]">IT</span></span>
           <div className="hidden items-center gap-8 md:flex">
             {[["The problem", "#problem"], ["How it works", "#how"], ["0G Stack", "#stack"]].map(([l, h]) => (
               <a key={l} href={h} className="text-[11px] font-bold tracking-[0.1em] text-[#4b5563] hover:text-white transition-colors">{l}</a>
@@ -496,17 +496,17 @@ export default function LandingPage() {
       <section id="manifesto" className="py-28 overflow-hidden">
         <div className="mx-auto max-w-7xl px-6">
           <FadeIn>
-            <p className="text-left text-[clamp(28px,4.5vw,64px)] font-extrabold leading-[1.12] tracking-tight text-white">
+            <p className="clash text-left text-[clamp(28px,4.5vw,64px)] font-extrabold leading-[1.12] tracking-tight text-white">
               Knowledge that can&apos;t be screenshotted.
             </p>
           </FadeIn>
           <FadeIn delay={120}>
-            <p className="mt-3 text-center text-[clamp(22px,3.5vw,52px)] font-extrabold leading-[1.15] tracking-tight text-[#374151]">
+            <p className="clash mt-3 text-center text-[clamp(22px,3.5vw,52px)] font-extrabold leading-[1.15] tracking-tight text-[#374151]">
               Returns that don&apos;t require your calendar.
             </p>
           </FadeIn>
           <FadeIn delay={240}>
-            <p className="mt-3 text-right text-[clamp(18px,2.8vw,42px)] font-extrabold leading-[1.2] tracking-tight text-[#1f2937]">
+            <p className="clash mt-3 text-right text-[clamp(18px,2.8vw,42px)] font-extrabold leading-[1.2] tracking-tight text-[#1f2937]">
               Ownership without custodians.
             </p>
           </FadeIn>
