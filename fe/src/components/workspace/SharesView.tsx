@@ -26,17 +26,6 @@ export default function SharesView() {
     "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
     "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
   ];
-  const sharePositions = mentors.map((mentor, index) => ({
-    mentor: mentor.name,
-    shares: "— shares",
-    portfolio: `Mentor #${mentor.tokenId}`,
-    price: "-",
-    change: "+0.0%",
-    rewards: "-",
-    tokenId: mentor.tokenId,
-    image: mentorImages[index % mentorImages.length],
-  }));
-
   // Batch-fetch balance + price + rewards for every mentor
   const batchContracts = address && mentors.length > 0
     ? mentors.flatMap((mentor) => [
@@ -61,12 +50,23 @@ export default function SharesView() {
     const price = (batchResults?.[i * 3 + 1]?.result as bigint | undefined) ?? BigInt(0);
     const rewards = (batchResults?.[i * 3 + 2]?.result as bigint | undefined) ?? BigInt(0);
     const value = BigInt(balance) * price;
-    return { mentor, balance, price, rewards, value };
+    return { mentor, balance, price, rewards, value, image: mentorImages[i % mentorImages.length] };
   });
+  const ownedPortfolioItems = portfolioItems.filter((item) => item.balance > 0);
+  const ownedSharePositions = ownedPortfolioItems.map((item) => ({
+    mentor: item.mentor.name,
+    shares: `${item.balance} shares`,
+    portfolio: `Mentor #${item.mentor.tokenId}`,
+    price: formatOg(item.price),
+    change: "+0.0%",
+    rewards: formatOg(item.rewards),
+    tokenId: item.mentor.tokenId,
+    image: item.image,
+  }));
 
   const totalValue = portfolioItems.reduce((sum, item) => sum + item.value, BigInt(0));
   const totalRewards = portfolioItems.reduce((sum, item) => sum + item.rewards, BigInt(0));
-  const activeMentorCount = portfolioItems.filter((item) => item.balance > 0).length;
+  const activeMentorCount = ownedPortfolioItems.length;
 
   const allocationItems = portfolioItems
     .filter((item) => item.balance > 0)
@@ -263,14 +263,18 @@ export default function SharesView() {
           <div className="grid grid-cols-[1.35fr_0.9fr_0.8fr_0.75fr_0.8fr_1fr] gap-3 border-b border-[rgba(96,165,250,0.16)] pb-2 text-[9px] font-bold uppercase tracking-[0.12em] text-[#586474]">
             <span>Mentor</span><span>Position</span><span>Share Price</span><span>Weekly Change</span><span>Rewards</span><span>Action</span>
           </div>
-          {sharePositions.length === 0 ? (
-            <div className="py-8 text-center text-[11px] text-[#4b5563]">No mentors on-chain yet. Buy shares from the Marketplace.</div>
-          ) : sharePositions.map((row) => (
+          {!address ? (
+            <div className="py-8 text-center text-[11px] text-[#4b5563]">Connect wallet to view your share positions.</div>
+          ) : ownedSharePositions.length === 0 ? (
+            <div className="py-8 text-center text-[11px] text-[#4b5563]">No share positions for this wallet yet. Buy shares from the table below.</div>
+          ) : ownedSharePositions.map((row) => (
             <SharePositionRow key={row.tokenId} row={row} user={address} />
           ))}
           </div>
           </div>
-          <p className="mt-3 text-[10px] text-[#707b89]">Showing 3 of 3 positions</p>
+          <p className="mt-3 text-[10px] text-[#707b89]">
+            Showing {ownedSharePositions.length} position{ownedSharePositions.length !== 1 ? "s" : ""} for connected wallet
+          </p>
         </div>
 
         <div className={`${panelClass} rounded-[7px] p-4`}>

@@ -509,6 +509,7 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
   const { address } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const sendPayload = useTxPayloadSender();
+  const txToast = useTxToast();
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -532,8 +533,10 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
         userAddress: address,
       });
       const signature = await signMessageAsync({ message: message.message });
-      const settlement = await api.buildExecuteQueryTx({ tokenId: mentor.tokenId });
-      const settlementTxHash = await sendPayload(settlement.tx);
+      const settlementTxHash = await txToast("Confirm LLM query", async () => {
+        const settlement = await api.buildExecuteQueryTx({ tokenId: mentor.tokenId });
+        return sendPayload(settlement.tx);
+      });
       const answer = await api.sendQuery({
         tokenId: mentor.tokenId,
         question: currentQuestion,

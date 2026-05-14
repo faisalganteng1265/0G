@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useWriteContract } from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
 
 import { useTxToast } from "@/components/ToastProvider";
 import { useMentorActivityEvents, useMentors } from "@/hooks/useMarketplace";
@@ -13,6 +13,7 @@ import { subtleButtonClass, accentButtonClass, solidAccentBtn } from "./shared";
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function MentorsView() {
+  const { address } = useAccount();
   const { data: onchainMentors = [], refetch } = useMentors();
   const { data: activityEvents = [] } = useMentorActivityEvents();
   const { writeContractAsync } = useWriteContract();
@@ -29,7 +30,10 @@ export default function MentorsView() {
     "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
     "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
   ];
-  const mentors = onchainMentors.map((mentor, index) => ({
+  const ownedOnchainMentors = address
+    ? onchainMentors.filter((mentor) => mentor.creator.toLowerCase() === address.toLowerCase())
+    : [];
+  const mentors = ownedOnchainMentors.map((mentor, index) => ({
     name: mentor.name,
     status: (mentor.status === 2 ? "READY" : mentor.status === 1 ? "REVIEW" : "DRAFT") as "DRAFT" | "REVIEW" | "READY",
     category: mentor.category,
@@ -51,7 +55,8 @@ export default function MentorsView() {
   const avgConfidenceLabel = mentors.length > 0 ? `${avgConfidence.toFixed(1)}%` : "0%";
   const pendingESign = mentors.filter((mentor) => mentor.status === "REVIEW").length;
   const activeDrafts = mentors.filter((mentor) => mentor.status === "DRAFT").length;
-  const recentActivity = activityEvents.slice(0, 4).map((event) => {
+  const ownedTokenIds = new Set(mentors.map((mentor) => mentor.tokenId));
+  const recentActivity = activityEvents.filter((event) => ownedTokenIds.has(event.tokenId)).slice(0, 4).map((event) => {
     const mentor = mentors.find((item) => item.tokenId === event.tokenId);
     return {
       ...event,
@@ -223,7 +228,7 @@ export default function MentorsView() {
           <div className="overflow-hidden rounded border border-[rgba(96,165,250,0.12)] bg-[rgba(3,8,10,0.36)]">
             {mentors.length === 0 && (
               <div className="px-4 py-10 text-center text-[11px] text-[#4b5563]">
-                No mentors yet. Click &quot;PREVIEW MINT FLOW&quot; to register your first mentor.
+                {address ? "No mentors yet. Click \"PREVIEW MINT FLOW\" to register your first mentor." : "Connect wallet to view your mentor packages."}
               </div>
             )}
             {mentors.map((mentor) => (
@@ -353,7 +358,7 @@ export default function MentorsView() {
             <button className={`mb-2 flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${solidAccentBtn}`} onClick={() => setIsMintOpen(true)} type="button">
               PREVIEW MINT FLOW <span className="text-base leading-none">›</span>
             </button>
-            <button className={`flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${subtleButtonClass}`} onClick={() => setIsUploadOpen(true)} type="button">
+            <button className={`flex w-full items-center justify-center gap-2 py-2.5 text-[10px] ${subtleButtonClass} disabled:cursor-not-allowed disabled:opacity-45`} disabled={!address || mentors.length === 0} onClick={() => setIsUploadOpen(true)} type="button">
               UPLOAD KNOWLEDGE
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
                 <path d="M5.5 7.5V2.5M5.5 2.5L3 5M5.5 2.5L8 5" stroke="#9ca3af" strokeWidth="1.1" strokeLinecap="round" />
