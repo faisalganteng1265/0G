@@ -17,7 +17,8 @@ import {
   Waves,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useMemo, Suspense, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAccount, usePublicClient, useSendTransaction, useSignMessage } from "wagmi";
 
 import { api, type TxPayload } from "@/lib/api";
@@ -170,6 +171,38 @@ function BuySharesButton({
     <button className={className} disabled={busy || tokenId === undefined} onClick={buyShares} type="button">
       {busy ? "PENDING..." : children}
     </button>
+  );
+}
+
+function MentorCardSkeleton() {
+  return (
+    <div className="relative flex min-h-[286px] flex-col overflow-hidden rounded-lg border border-[#1a2028] bg-[#07090c] p-5 animate-pulse">
+      <div className="absolute right-0 top-0 rounded-bl-2xl border-b border-l border-[#1a2028] px-4 py-2">
+        <div className="h-3 w-5 rounded bg-[#1f2937]" />
+      </div>
+      <div className="mb-4 flex items-start gap-4 pr-8">
+        <div className="h-16 w-16 shrink-0 rounded-md bg-[#1f2937]" />
+        <div className="min-w-0 flex-1 pt-1">
+          <div className="mb-2 h-4 w-28 rounded bg-[#1f2937]" />
+          <div className="flex gap-1.5">
+            <div className="h-5 w-16 rounded-sm bg-[#1a2028]" />
+            <div className="h-5 w-12 rounded-sm bg-[#1a2028]" />
+          </div>
+        </div>
+      </div>
+      <div className="mb-5 grid grid-cols-2 gap-x-7 gap-y-4 border-b border-[#1a2028] pb-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i}>
+            <div className="mb-1 h-2 w-20 rounded bg-[#1a2028]" />
+            <div className="h-3 w-16 rounded bg-[#1f2937]" />
+          </div>
+        ))}
+      </div>
+      <div className="mt-auto flex gap-2">
+        <div className="h-9 flex-1 rounded bg-[#1f2937]" />
+        <div className="h-9 flex-1 rounded bg-[#1f2937]" />
+      </div>
+    </div>
   );
 }
 
@@ -710,13 +743,29 @@ function toDisplayMentor(mentor: MentorMeta, index: number): DisplayMentor {
   };
 }
 
-export default function MarketplacePage() {
+function MarketplacePageInner() {
+  const searchParams = useSearchParams();
+  const searchQuery = (searchParams.get("q") ?? "").toLowerCase();
   const [activeFilter, setActiveFilter] = useState("TRENDING");
-  const { data: onchainMentors = [] } = useMentors();
+  const { data: onchainMentors = [], isLoading: mentorsLoading } = useMentors();
   const { data: gapEvents = [] } = useGapEvents();
-  const displayMentors = onchainMentors.map(toDisplayMentor);
+  const sortedMentors = useMemo(() => {
+    const arr = [...onchainMentors];
+    if (activeFilter === "TRENDING") return arr.sort((a, b) => b.totalQueries - a.totalQueries);
+    if (activeFilter === "HIGHEST YIELD") return arr.sort((a, b) => b.confidenceScore - a.confidenceScore);
+    if (activeFilter === "NEW KNOWLEDGE") return arr.sort((a, b) => b.tokenId - a.tokenId);
+    return arr;
+  }, [onchainMentors, activeFilter]);
+  const allDisplayMentors = sortedMentors.map(toDisplayMentor);
+  const displayMentors = searchQuery
+    ? allDisplayMentors.filter((m) =>
+        m.name.toLowerCase().includes(searchQuery) ||
+        m.tag.toLowerCase().includes(searchQuery) ||
+        m.knowledgeType.toLowerCase().includes(searchQuery)
+      )
+    : allDisplayMentors;
   const topDisplayMentors: Array<DisplayMentor & { change: string }> =
-    displayMentors.slice(0, 3).map((mentor) => ({ ...mentor, change: "+0.0% This Week" }));
+    allDisplayMentors.slice(0, 3).map((mentor) => ({ ...mentor, change: "+0.0% This Week" }));
   const liveStats = [
     { label: "ACTIVE MENTORS", value: String(onchainMentors.length), sub: "on-chain", icon: Users, tone: "text-[#2dd4bf]" },
     {
@@ -803,9 +852,11 @@ export default function MarketplacePage() {
           </div>
 
           <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {displayMentors.length === 0 ? (
+            {mentorsLoading ? (
+              Array.from({ length: 3 }, (_, i) => <MentorCardSkeleton key={i} />)
+            ) : displayMentors.length === 0 ? (
               <div className="col-span-3 flex items-center justify-center rounded-lg border border-[#1f2937] bg-black py-16 text-[12px] font-mono text-[#586474]">
-                No mentors registered on-chain yet. Be the first — go to My Mentors.
+                {searchQuery ? `No mentors found for "${searchQuery}".` : "No mentors registered on-chain yet. Be the first — go to My Mentors."}
               </div>
             ) : displayMentors.map((mentor, index) => (
               <MentorCard key={mentor.id} mentor={mentor} index={index} />
@@ -932,5 +983,13 @@ export default function MarketplacePage() {
             </div>
           </div>
     </>
+  );
+}
+
+export default function MarketplacePage() {
+  return (
+    <Suspense>
+      <MarketplacePageInner />
+    </Suspense>
   );
 }

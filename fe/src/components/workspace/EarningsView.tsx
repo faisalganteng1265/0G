@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 
@@ -11,6 +12,16 @@ import { subtleButtonClass, solidAccentBtn } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
+// Mirror of RevenueDistributor.sol constants
+const MENTOR_BPS = 6000;
+const CURATOR_BPS = 2500;
+const BPS_DENOM = 10000;
+const PLATFORM_BPS = BPS_DENOM - MENTOR_BPS - CURATOR_BPS;
+const mentorPct = Math.round((MENTOR_BPS / BPS_DENOM) * 100);
+const curatorPct = Math.round((CURATOR_BPS / BPS_DENOM) * 100);
+const platformPct = Math.round((PLATFORM_BPS / BPS_DENOM) * 100);
+const curatorBoundary = mentorPct + curatorPct;
+
 type PayoutEvent = {
   mentorId: number;
   amount: bigint;
@@ -20,7 +31,7 @@ type PayoutEvent = {
 
 export default function EarningsView() {
   const { address } = useAccount();
-  const { data: mentors = [] } = useMentors();
+  const { data: mentors = [], isLoading: mentorsLoading } = useMentors();
   const { writeContractAsync } = useWriteContract();
   const txToast = useTxToast();
   const publicClient = usePublicClient();
@@ -123,7 +134,10 @@ export default function EarningsView() {
               <span className="mt-0.5 shrink-0 text-[56px] leading-none text-[#2dd4bf]">{icon}</span>
               <div className="min-w-0 flex-1">
                 <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">{label}</p>
-                <p className="text-[22px] font-bold leading-none text-white">{value}</p>
+                {mentorsLoading
+                  ? <div className="h-7 w-14 animate-pulse rounded bg-[#1f2937]" />
+                  : <p className="text-[22px] font-bold leading-none text-white">{value}</p>
+                }
                 <div className="mt-2 flex items-end justify-between gap-4">
                   <div>
                     <p className="text-[10px] text-[#707b89]">{detail}</p>
@@ -146,6 +160,7 @@ export default function EarningsView() {
             <div className="flex items-center gap-2">
               <span className="text-[#8b95a3]">↯</span>
               <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Revenue Overview</h2>
+              <span className="rounded border border-[#1f2937] bg-[#0d1114] px-2 py-0.5 text-[9px] font-bold tracking-[0.1em] text-[#374151]">ILLUSTRATIVE</span>
             </div>
             <div className="flex items-center gap-2">
               {["1W", "1M", "3M", "ALL"].map((range) => (
@@ -187,7 +202,10 @@ export default function EarningsView() {
             <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Revenue Split</h2>
           </div>
           <div className="grid items-center gap-5 md:grid-cols-[170px_1fr]">
-            <div className="relative h-[170px] w-[170px] rounded-full bg-[conic-gradient(#2dd4bf_0_60%,#67e8f9_60%_85%,#475569_85%_100%)] p-[28px]">
+            <div
+              className="relative h-[170px] w-[170px] rounded-full p-[28px]"
+              style={{ background: `conic-gradient(#2dd4bf 0 ${mentorPct}%, #67e8f9 ${mentorPct}% ${curatorBoundary}%, #475569 ${curatorBoundary}% 100%)` }}
+            >
               <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#071014] text-center">
                 <span className="text-[13px] font-bold text-white">{formatOg(totalClaimable)}</span>
                 <span className="mt-1 text-[9px] uppercase tracking-[0.12em] text-[#707b89]">Claimable</span>
@@ -195,9 +213,9 @@ export default function EarningsView() {
             </div>
             <div>
               {[
-                ["#2dd4bf", "Mentor royalty", "60%"],
-                ["#67e8f9", "Curator rewards", "25%"],
-                ["#64748b", "Platform fee", "15%"],
+                ["#2dd4bf", "Mentor royalty", `${mentorPct}%`],
+                ["#67e8f9", "Curator rewards", `${curatorPct}%`],
+                ["#64748b", "Platform fee", `${platformPct}%`],
               ].map(([color, label, pct]) => (
                 <div key={label} className="grid grid-cols-[14px_1fr_auto] items-center gap-3 border-b border-[rgba(96,165,250,0.14)] py-3 last:border-b-0">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
@@ -322,6 +340,7 @@ function VestingRow({
 }) {
   const { writeContractAsync } = useWriteContract();
   const txToast = useTxToast();
+  const [showModal, setShowModal] = useState(false);
   const tokenId = row.tokenId ? Number(row.tokenId) : undefined;
   const claimable = useMentorClaimable(tokenId);
   const vestingProgress = useVestingProgress(tokenId);
@@ -331,40 +350,84 @@ function VestingRow({
       ? `${Math.min(100, Number(vestingProgress.data) / 100)}%`
       : row.progress;
 
-  async function vestOrClaim() {
+  async function vest() {
     if (tokenId === undefined) return;
-    const claim = window.confirm("OK = claim vested, Cancel = vest earnings");
-    await txToast(claim ? "Claim vested" : "Vest earnings", () =>
+    setShowModal(false);
+    await txToast("Vest earnings", () =>
       writeContractAsync({
         address: MARKETPLACE_ADDRESS,
         abi: marketplaceAbi,
-        functionName: claim ? "claimVested" : "vestEarnings",
+        functionName: "vestEarnings",
+        args: [BigInt(tokenId)],
+      }),
+    );
+  }
+
+  async function claim() {
+    if (tokenId === undefined) return;
+    setShowModal(false);
+    await txToast("Claim vested", () =>
+      writeContractAsync({
+        address: MARKETPLACE_ADDRESS,
+        abi: marketplaceAbi,
+        functionName: "claimVested",
         args: [BigInt(tokenId)],
       }),
     );
   }
 
   return (
-    <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px] min-w-[500px]">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#2dd4bf]/35 bg-[#2dd4bf]/10 text-[#2dd4bf]">{["◈", "⬢", "⬡", "⛨"][index % 4]}</div>
+    <>
+      <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.8fr_0.45fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px] min-w-[500px]">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#2dd4bf]/35 bg-[#2dd4bf]/10 text-[#2dd4bf]">{["◈", "⬢", "⬡", "⛨"][index % 4]}</div>
+          <div>
+            <p className="font-bold text-white">{row.mentor}</p>
+            <p className="text-[10px] text-[#707b89]">{row.subtitle}</p>
+          </div>
+        </div>
         <div>
-          <p className="font-bold text-white">{row.mentor}</p>
-          <p className="text-[10px] text-[#707b89]">{row.subtitle}</p>
+          <p className="font-bold text-white">{row.unlock}</p>
+          <p className="text-[10px] text-[#707b89]">{row.date}</p>
         </div>
-      </div>
-      <div>
-        <p className="font-bold text-white">{row.unlock}</p>
-        <p className="text-[10px] text-[#707b89]">{row.date}</p>
-      </div>
-      <p className="font-bold text-white">{liveAmount}</p>
-      <div className="flex items-center gap-3">
-        <div className="h-[6px] flex-1 rounded-full bg-[rgba(96,165,250,0.14)]">
-          <div className="h-[6px] rounded-full bg-[#2dd4bf]" style={{ width: liveProgress }} />
+        <p className="font-bold text-white">{liveAmount}</p>
+        <div className="flex items-center gap-3">
+          <div className="h-[6px] flex-1 rounded-full bg-[rgba(96,165,250,0.14)]">
+            <div className="h-[6px] rounded-full bg-[#2dd4bf]" style={{ width: liveProgress }} />
+          </div>
+          <span className="text-[10px] text-[#d1d5db]">{liveProgress}</span>
         </div>
-        <span className="text-[10px] text-[#d1d5db]">{liveProgress}</span>
+        <button
+          className="text-center text-[#2dd4bf] disabled:opacity-30"
+          disabled={tokenId === undefined}
+          onClick={() => setShowModal(true)}
+          type="button"
+        >›</button>
       </div>
-      <button className="text-center text-[#2dd4bf]" disabled={tokenId === undefined} onClick={vestOrClaim} type="button">›</button>
-    </div>
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[340px] rounded border border-[rgba(45,212,191,0.3)] bg-black p-5 shadow-[0_0_40px_rgba(45,212,191,0.1)]">
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-white">{row.mentor}</h3>
+              <button onClick={() => setShowModal(false)} className="text-[#6b7280] hover:text-white" type="button">×</button>
+            </div>
+            <p className="mb-5 text-[10px] text-[#707b89]">Choose an action for this vesting position.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={vest}
+                className="flex-1 rounded border border-[#374151] bg-transparent py-2.5 font-mono text-[10px] font-bold tracking-[0.1em] text-[#9ca3af] hover:border-[#4b5563] hover:text-white transition-colors"
+                type="button"
+              >VEST EARNINGS</button>
+              <button
+                onClick={claim}
+                className="flex-1 rounded border border-[rgba(45,212,191,0.5)] bg-[rgba(45,212,191,0.08)] py-2.5 font-mono text-[10px] font-bold tracking-[0.1em] text-[#2dd4bf] hover:bg-[rgba(45,212,191,0.14)] transition-colors"
+                type="button"
+              >CLAIM VESTED</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

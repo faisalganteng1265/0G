@@ -85,9 +85,9 @@ export default function MarketplaceSidebar() {
               style={{ backgroundImage: `url(${nodeLogoSrc})` }}
             />
             <div>
-              <p className="text-[12px] font-bold tracking-[0.1em] text-white">NODE_01</p>
+              <p className="text-[12px] font-bold tracking-[0.1em] text-white">TACIT</p>
               <p className="text-[10px] uppercase tracking-[0.08em] text-[#4b5563]">
-                LIVE_DATING_ENCLAVE
+                0G MAINNET · ENCLAVE
               </p>
             </div>
           </div>

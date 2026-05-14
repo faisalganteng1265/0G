@@ -15,6 +15,7 @@ interface DashboardShellProps {
 export default function DashboardShell({ children }: DashboardShellProps) {
   const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
   const scrollbarTimeoutRef = useRef<number | null>(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -70,7 +71,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
       <header className="flex h-12 shrink-0 items-center justify-between rounded-lg border border-[#2a2d32] bg-[#050607]/95 px-5 shadow-2xl shadow-black/30">
         <div className="flex min-w-0 items-center gap-8">
           <span className="shrink-0 text-base font-extrabold tracking-[0.15em] text-white">
-            AI<span className="text-[#2dd4bf]">MENTOR</span>.X
+            TAC<span className="text-[#2dd4bf]">IT</span>
           </span>
         </div>
 
@@ -104,6 +105,13 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               type="text"
               placeholder="Search mentors..."
               className="w-[130px] border-0 bg-transparent font-mono text-[11px] text-[#9ca3af] outline-none placeholder:text-[#6b7280]"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchValue.trim()) {
+                  router.push(`/marketplace?q=${encodeURIComponent(searchValue.trim())}`);
+                }
+              }}
             />
           </div>
           <ConnectButton.Custom>

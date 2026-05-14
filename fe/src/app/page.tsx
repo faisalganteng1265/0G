@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Aurora from "@/components/Aurora";
+import { useMentors } from "@/hooks/useMarketplace";
 
 // ─── Particle Network Canvas ─────────────────────────────────────────────────
 function ParticleCanvas({ className }: { className?: string }) {
@@ -355,6 +356,7 @@ function FadeIn({ children, className, delay = 0 }: { children: React.ReactNode;
 // ─── Landing Page ─────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const { data: mentors = [] } = useMentors();
 
   useEffect(() => {
     function onScroll() { setScrolled(window.scrollY > 50); }
@@ -433,7 +435,12 @@ export default function LandingPage() {
       <FadeIn>
         <div className="mx-auto max-w-7xl px-6 py-16">
           <div className="grid grid-cols-2 gap-px bg-[#141a1f] overflow-hidden rounded-2xl md:grid-cols-4">
-            {[["2","Mentors\non-chain","#2dd4bf"],["11","Total\nqueries","#60a5fa"],["6","Smart\ncontracts","#a78bfa"],["0G","Mainnet\nChain 16661","#f59e0b"]].map(([v,l,c]) => (
+            {[
+            [mentors.length > 0 ? String(mentors.length) : "—", "Mentors\non-chain", "#2dd4bf"],
+            [mentors.length > 0 ? String(mentors.reduce((s, m) => s + m.totalQueries, 0)) : "—", "Total\nqueries", "#60a5fa"],
+            ["6", "Smart\ncontracts", "#a78bfa"],
+            ["0G", "Mainnet\nChain 16661", "#f59e0b"],
+          ].map(([v, l, c]) => (
               <div key={v} className="group bg-[#070a0c] px-8 py-10 transition-colors hover:bg-[#0a0d10]">
                 <p className="mb-2 text-[clamp(44px,6vw,80px)] font-extrabold leading-none tracking-tight" style={{ color: c as string }}>{v}</p>
                 <p className="whitespace-pre-line text-[11px] tracking-[0.12em] text-[#374151] leading-[1.6]">{l}</p>

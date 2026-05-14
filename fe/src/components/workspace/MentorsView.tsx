@@ -14,7 +14,7 @@ const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function MentorsView() {
   const { address } = useAccount();
-  const { data: onchainMentors = [], refetch } = useMentors();
+  const { data: onchainMentors = [], refetch, isLoading: mentorsLoading } = useMentors();
   const { data: activityEvents = [] } = useMentorActivityEvents();
   const { writeContractAsync } = useWriteContract();
   const txToast = useTxToast();
@@ -138,7 +138,7 @@ export default function MentorsView() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Knowledge Vault Files</p>
-              <p className="text-[22px] font-bold leading-none text-white">{knowledgeVaultFiles}</p>
+              {mentorsLoading ? <div className="h-7 w-10 animate-pulse rounded bg-[#1f2937]" /> : <p className="text-[22px] font-bold leading-none text-white">{knowledgeVaultFiles}</p>}
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="shrink-0 text-[10px] text-[#707b89]">Encrypted &amp; stored</p>
                 <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
@@ -158,7 +158,7 @@ export default function MentorsView() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Avg Confidence</p>
-              <p className="text-[22px] font-bold leading-none text-white">{avgConfidenceLabel}</p>
+              {mentorsLoading ? <div className="h-7 w-14 animate-pulse rounded bg-[#1f2937]" /> : <p className="text-[22px] font-bold leading-none text-white">{avgConfidenceLabel}</p>}
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="shrink-0 text-[10px] text-[#707b89]">Preview confidence</p>
                 <div className="h-[3px] w-[86px] shrink-0 rounded-full bg-[#1f2937]">
@@ -178,7 +178,7 @@ export default function MentorsView() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Pending E-Sign</p>
-              <p className="text-[22px] font-bold leading-none text-white">{pendingESign}</p>
+              {mentorsLoading ? <div className="h-7 w-8 animate-pulse rounded bg-[#1f2937]" /> : <p className="text-[22px] font-bold leading-none text-white">{pendingESign}</p>}
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="shrink-0 text-[10px] text-[#707b89]">Attestations pending</p>
                 <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
@@ -199,7 +199,7 @@ export default function MentorsView() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">Active Drafts</p>
-              <p className="text-[22px] font-bold leading-none text-white">{activeDrafts}</p>
+              {mentorsLoading ? <div className="h-7 w-8 animate-pulse rounded bg-[#1f2937]" /> : <p className="text-[22px] font-bold leading-none text-white">{activeDrafts}</p>}
               <div className="mt-1 flex items-center justify-between gap-4">
                 <p className="shrink-0 text-[10px] text-[#707b89]">In progress</p>
                 <svg viewBox="0 0 120 18" className="h-[14px] w-[72px] shrink-0" fill="none">
@@ -293,7 +293,11 @@ export default function MentorsView() {
                         </div>
                       </div>
                     </div>
-                    <button className={`whitespace-nowrap px-3 py-1.5 text-[9px] ${accentButtonClass}`}>
+                    <button
+                      className={`whitespace-nowrap px-3 py-1.5 text-[9px] ${accentButtonClass}`}
+                      onClick={() => { setUploadTokenId(String(mentor.tokenId)); setIsUploadOpen(true); }}
+                      type="button"
+                    >
                       OPEN STUDIO
                     </button>
                     <span className="cursor-pointer text-base text-[#586474] hover:text-[#8b95a3]">⋮</span>

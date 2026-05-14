@@ -26,13 +26,19 @@ export default function SecurityView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [showRowsMenu, setShowRowsMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState("ALL");
 
-  const totalPages = Math.max(1, Math.ceil(securityEvents.length / rowsPerPage));
+  const filteredEvents = activeTab === "ALL" ? securityEvents
+    : activeTab === "ACCESS" ? securityEvents.filter((e) => e.type === "Transfer")
+    : activeTab === "STORAGE" || activeTab === "TEE" ? securityEvents.filter((e) => e.type === "StorageRefUpdated")
+    : [];
+
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / rowsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIdx = (safeCurrentPage - 1) * rowsPerPage;
-  const endIdx = Math.min(startIdx + rowsPerPage, securityEvents.length);
+  const endIdx = Math.min(startIdx + rowsPerPage, filteredEvents.length);
 
-  const logs = securityEvents.slice(startIdx, endIdx).map((event) => [
+  const logs = filteredEvents.slice(startIdx, endIdx).map((event) => [
     event.type === "Transfer" ? "⇄" : "▱",
     event.type === "Transfer" ? "INFT_TRANSFER" : "STORAGE_COMMIT",
     `Mentor #${event.tokenId} ${event.detail}`,
@@ -91,8 +97,9 @@ export default function SecurityView() {
               {["ALL", "TEE", "ACCESS", "STORAGE", "E-SIGN", "ALERTS"].map((tab) => (
                 <button
                   key={tab}
+                  onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
                   className={`rounded border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] ${
-                    tab === "ALL"
+                    tab === activeTab
                       ? "border-[#2dd4bf]/50 bg-[#2dd4bf]/10 text-[#2dd4bf]"
                       : "border-[rgba(96,165,250,0.18)] bg-[rgba(255,255,255,0.025)] text-[#8b95a3]"
                   }`}
@@ -114,7 +121,9 @@ export default function SecurityView() {
               <span>Event</span><span>Detail</span><span>Proof</span><span>Source</span><span>Severity</span><span>Time</span><span>Actions</span>
             </div>
             {logs.length === 0 && (
-              <div className="px-4 py-8 text-center text-[11px] text-[#4b5563]">No on-chain events yet. Transfer or clone an INFT to generate logs.</div>
+              <div className="px-4 py-8 text-center text-[11px] text-[#4b5563]">
+                {activeTab === "ALL" ? "No on-chain events yet. Transfer or clone an INFT to generate logs." : `No ${activeTab} events detected on-chain.`}
+              </div>
             )}
             {logs.map(([icon, event, detail, proof, source, severity, time]) => (
               <div key={`${event}-${time}`} className="grid grid-cols-[1fr_1.55fr_0.78fr_0.72fr_0.66fr_0.65fr_0.56fr] items-center gap-3 border-t border-[rgba(96,165,250,0.12)] px-3 py-3 text-[10px]">
@@ -135,9 +144,9 @@ export default function SecurityView() {
 
           <div className="mt-4 flex items-center justify-between text-[10px] text-[#8b95a3]">
             <span>
-              {securityEvents.length === 0
+              {filteredEvents.length === 0
                 ? "No events"
-                : `Showing ${startIdx + 1} to ${endIdx} of ${securityEvents.length} events`}
+                : `Showing ${startIdx + 1} to ${endIdx} of ${filteredEvents.length} events`}
             </span>
             <div className="flex items-center gap-1">
               <button

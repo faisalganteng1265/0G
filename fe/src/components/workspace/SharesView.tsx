@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useAccount, usePublicClient, useReadContracts, useSendTransaction, useWriteContract } from "wagmi";
 
 import { useTxToast } from "@/components/ToastProvider";
@@ -21,7 +21,7 @@ const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function SharesView() {
   const { address } = useAccount();
-  const { data: mentors = [] } = useMentors();
+  const { data: mentors = [], isLoading: mentorsLoading } = useMentors();
   const mentorImages = [
     "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
     "https://lh3.googleusercontent.com/aida-public/AB6AXuDwHax8-ONwCEu5RCRFNZaHEf3vFl3ZmHbQAdSZaM4Elv2YyMCoTOc0FZznxMitJ7LYmW39c3plK3Z8ehgMMV-ZK1-gKG21Qvd88ybTMVAgcJNZ61EUyP1Rzts6Af1PoKNP3L2pCYv1dXU_CpwzBY0H7T9WSL1UOwc4J795T3fNLfTee_C1ACovI8R5NBnWJ869DYe0pPkbhyIkST18eVEFU5SXJdxPbakmqDidBwNJorTZNOftAcjn4GlJ0zGc6U-ZcNNl5BltlBc",
@@ -153,7 +153,10 @@ export default function SharesView() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b95a3]">{stat.label}</p>
-                <p className="text-[22px] font-bold leading-none text-white">{stat.value}</p>
+                {mentorsLoading
+                  ? <div className="h-7 w-14 animate-pulse rounded bg-[#1f2937]" />
+                  : <p className="text-[22px] font-bold leading-none text-white">{stat.value}</p>
+                }
                 <div className="mt-1 flex items-center justify-between gap-4">
                   <p className="shrink-0 text-[10px] text-[#707b89]">{stat.detail}</p>
                   <svg viewBox="0 0 120 24" className="h-6 w-[82px] shrink-0" fill="none">
@@ -180,6 +183,7 @@ export default function SharesView() {
               <div className="flex items-center gap-2">
                 <span className="text-[#2dd4bf]">▥</span>
                 <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">Portfolio Performance</h2>
+                <span className="rounded border border-[#1f2937] bg-[#0d1114] px-2 py-0.5 text-[9px] font-bold tracking-[0.1em] text-[#374151]">ILLUSTRATIVE</span>
               </div>
               <p className="mt-1 pl-6 text-[10px] text-[#707b89]">Total portfolio value over time (OG)</p>
             </div>
@@ -417,6 +421,8 @@ type SharePosition = {
 function SharePositionRow({ row, user }: { row: SharePosition; user?: `0x${string}` }) {
   const { writeContractAsync } = useWriteContract();
   const txToast = useTxToast();
+  const [sellModal, setSellModal] = useState(false);
+  const [sellAmount, setSellAmount] = useState("1");
   const balance = useShareBalance(row.tokenId, user);
   const price = useSharePrice(row.tokenId);
   const pendingRewards = usePendingCuratorRewards(row.tokenId, user);
@@ -438,11 +444,13 @@ function SharePositionRow({ row, user }: { row: SharePosition; user?: `0x${strin
     await pendingRewards.refetch();
   }
 
-  async function sellShares() {
+  async function sellShares(e: FormEvent) {
+    e.preventDefault();
     if (row.tokenId === undefined) return;
     const tokenId = row.tokenId;
-    const amount = Number(window.prompt("Amount to sell", "1"));
-    if (!amount) return;
+    const amount = Number(sellAmount);
+    if (!amount || amount < 1) return;
+    setSellModal(false);
     await txToast("Sell shares", () =>
       writeContractAsync({
         address: MARKETPLACE_ADDRESS,
@@ -455,34 +463,74 @@ function SharePositionRow({ row, user }: { row: SharePosition; user?: `0x${strin
   }
 
   return (
-    <div className="grid grid-cols-[1.35fr_0.9fr_0.8fr_0.75fr_0.8fr_1fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="h-11 w-11 shrink-0 rounded border border-[rgba(96,165,250,0.25)] bg-cover bg-center" style={{ backgroundImage: `url(${row.image})` }} />
-        <div className="min-w-0">
-          <p className="truncate font-bold text-white">{row.mentor}</p>
-          <span className="mt-1 inline-flex rounded border border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)] px-1.5 py-0.5 text-[8px] font-bold text-[#2dd4bf]">ACTIVE</span>
+    <>
+      <div className="grid grid-cols-[1.35fr_0.9fr_0.8fr_0.75fr_0.8fr_1fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="h-11 w-11 shrink-0 rounded border border-[rgba(96,165,250,0.25)] bg-cover bg-center" style={{ backgroundImage: `url(${row.image})` }} />
+          <div className="min-w-0">
+            <p className="truncate font-bold text-white">{row.mentor}</p>
+            <span className="mt-1 inline-flex rounded border border-[rgba(45,212,191,0.35)] bg-[rgba(45,212,191,0.08)] px-1.5 py-0.5 text-[8px] font-bold text-[#2dd4bf]">ACTIVE</span>
+          </div>
+        </div>
+        <div>
+          <p className="font-bold text-white">{liveShares}</p>
+          <p className="text-[10px] text-[#707b89]">{row.portfolio}</p>
+        </div>
+        <p className="font-bold text-white">{livePrice}</p>
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-[#2dd4bf]">{row.change}</span>
+          <svg viewBox="0 0 60 18" className="h-4 w-11" fill="none">
+            <path d="M0 9L6 12L12 10L18 13L24 8L30 10L36 7L42 8L48 4L54 5L60 2" stroke="#2dd4bf" strokeWidth="1.3" />
+          </svg>
+        </div>
+        <div>
+          <p className="font-bold text-white">{liveRewards}</p>
+          <p className="text-[10px] text-[#707b89]">Available</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className={`px-3 py-1.5 text-[9px] ${accentButtonClass}`} disabled={row.tokenId === undefined} onClick={claimRewards} type="button">CLAIM</button>
+          <button className={`px-3 py-1.5 text-[9px] ${subtleButtonClass}`} disabled={row.tokenId === undefined} onClick={() => setSellModal(true)} type="button">MANAGE</button>
+          <span className="text-[#586474]">⋮</span>
         </div>
       </div>
-      <div>
-        <p className="font-bold text-white">{liveShares}</p>
-        <p className="text-[10px] text-[#707b89]">{row.portfolio}</p>
-      </div>
-      <p className="font-bold text-white">{livePrice}</p>
-      <div className="flex items-center gap-3">
-        <span className="font-bold text-[#2dd4bf]">{row.change}</span>
-        <svg viewBox="0 0 60 18" className="h-4 w-11" fill="none">
-          <path d="M0 9L6 12L12 10L18 13L24 8L30 10L36 7L42 8L48 4L54 5L60 2" stroke="#2dd4bf" strokeWidth="1.3" />
-        </svg>
-      </div>
-      <div>
-        <p className="font-bold text-white">{liveRewards}</p>
-        <p className="text-[10px] text-[#707b89]">Available</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <button className={`px-3 py-1.5 text-[9px] ${accentButtonClass}`} disabled={row.tokenId === undefined} onClick={claimRewards} type="button">CLAIM</button>
-        <button className={`px-3 py-1.5 text-[9px] ${subtleButtonClass}`} disabled={row.tokenId === undefined} onClick={sellShares} type="button">MANAGE</button>
-        <span className="text-[#586474]">⋮</span>
-      </div>
-    </div>
+
+      {sellModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <form
+            onSubmit={sellShares}
+            className="w-full max-w-[320px] rounded border border-[rgba(96,165,250,0.24)] bg-black p-5 shadow-[0_0_40px_rgba(0,0,0,0.5)]"
+          >
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-white">Sell Shares</h3>
+              <button type="button" onClick={() => setSellModal(false)} className="text-[#6b7280] hover:text-white">×</button>
+            </div>
+            <p className="mb-4 text-[10px] leading-[1.5] text-[#707b89]">
+              Position: <span className="text-white">{liveShares}</span> of <span className="text-white">{row.mentor}</span>
+            </p>
+            <input
+              type="number"
+              min="1"
+              required
+              value={sellAmount}
+              onChange={(e) => setSellAmount(e.target.value)}
+              className="mb-4 w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none placeholder:text-[#586474]"
+              placeholder="Amount to sell"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSellModal(false)}
+                className="flex-1 rounded border border-[#374151] bg-transparent py-2.5 font-mono text-[10px] font-bold tracking-[0.1em] text-[#9ca3af] hover:border-[#4b5563] hover:text-white transition-colors"
+              >CANCEL</button>
+              <button
+                type="submit"
+                disabled={!sellAmount || Number(sellAmount) < 1}
+                className="flex-1 rounded border border-[rgba(45,212,191,0.5)] bg-[rgba(45,212,191,0.08)] py-2.5 font-mono text-[10px] font-bold tracking-[0.1em] text-[#2dd4bf] hover:bg-[rgba(45,212,191,0.14)] disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+              >SELL</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
   );
 }
