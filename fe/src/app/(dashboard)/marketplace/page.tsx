@@ -521,6 +521,7 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
 
   async function submitQuestion() {
     if (!question.trim() || mentor.tokenId === undefined || !address) return;
+    const tokenId = mentor.tokenId;
     const currentQuestion = question.trim();
     setQuestion("");
     setBusy(true);
@@ -528,17 +529,17 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
 
     try {
       const message = await api.getQueryMessage({
-        tokenId: mentor.tokenId,
+        tokenId,
         question: currentQuestion,
         userAddress: address,
       });
       const signature = await signMessageAsync({ message: message.message });
       const settlementTxHash = await txToast("Confirm LLM query", async () => {
-        const settlement = await api.buildExecuteQueryTx({ tokenId: mentor.tokenId });
+        const settlement = await api.buildExecuteQueryTx({ tokenId });
         return sendPayload(settlement.tx);
       });
       const answer = await api.sendQuery({
-        tokenId: mentor.tokenId,
+        tokenId,
         question: currentQuestion,
         userAddress: address,
         signature,
