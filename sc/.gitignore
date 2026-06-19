@@ -1,12 +1,5 @@
-# Foundry build artifacts
-out/
-cache/
-
-# Deployment broadcasts and local chain state
-broadcast/
-anvil/
-
-# Local environment files
-.env
-.env.*
-!.env.example
+build/*
+traces/*
+.trace
+.coverage*
+Pub.*.toml

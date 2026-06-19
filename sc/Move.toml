@@ -1,0 +1,12 @@
+[package]
+name = "tacit"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+
+# Read more about the package management system options:
+# https://docs.sui.io/guides/developer/packages/move-package-management
+
+[addresses]
+tacit = "0x0"

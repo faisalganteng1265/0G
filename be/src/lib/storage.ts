@@ -1,101 +1,101 @@
-import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
-import { ethers } from "ethers";
-import fs from "fs/promises";
-import os from "os";
-import path from "path";
-import crypto from "crypto";
+import { SealClient, SessionKey } from "@mysten/seal";
+import { Transaction } from "@mysten/sui/transactions";
+import { fromHex, toHex } from "@mysten/sui/utils";
+import { WalrusClient } from "@mysten/walrus";
+import { CONFIG_ID, getClient, getOracleKeypair, PACKAGE_ID } from "./sui";
 
-const INDEXER_URL =
-  process.env.ZG_INDEXER_URL ??
-  "https://indexer-storage-turbo.0g.ai";
-const RPC_URL =
-  process.env.ZG_RPC_URL ?? "https://evmrpc.0g.ai";
+const WALRUS_EPOCHS = Number(process.env.WALRUS_EPOCHS ?? "5");
+const SEAL_THRESHOLD = Number(process.env.SEAL_THRESHOLD ?? "1");
+const SEAL_KEY_SERVER_IDS = (process.env.SEAL_KEY_SERVER_IDS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
-function getSigner() {
-  if (!process.env.ORACLE_PRIVATE_KEY)
-    throw new Error("ORACLE_PRIVATE_KEY not set");
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
-  return new ethers.Wallet(process.env.ORACLE_PRIVATE_KEY, provider);
-}
-
-// AES-256-GCM: key di-derive dari mentorId agar tiap mentor punya enkripsi berbeda.
-// Format ciphertext: [iv(12)] + [authTag(16)] + [ciphertext]
-function deriveKey(mentorId: string): Buffer {
-  return crypto
-    .createHash("sha256")
-    .update(`aimentor-${mentorId}-${process.env.ORACLE_PRIVATE_KEY ?? ""}`)
-    .digest();
-}
-
-// Returns the raw AES key bytes for a mentor — used by oracle to set sealedKey on-chain.
-// Note: demo-grade. Production should ECIES-encrypt this for the owner's public key.
-export function getKnowledgeKeyBytes(mentorId: string): Buffer {
-  return deriveKey(mentorId);
-}
-
-function encrypt(plaintext: string, mentorId: string): Buffer {
-  const key = deriveKey(mentorId);
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-  const encrypted = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-  ]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, encrypted]);
-}
-
-function decrypt(data: Buffer, mentorId: string): string {
-  const key = deriveKey(mentorId);
-  const iv = data.subarray(0, 12);
-  const tag = data.subarray(12, 28);
-  const ciphertext = data.subarray(28);
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(tag);
-  return decipher.update(ciphertext) + decipher.final("utf8");
-}
-
-// Upload knowledge mentor ke 0G Storage (encrypted).
-// Returns rootHash yang disimpan on-chain di AIMentorINFT.storageRef
-export async function uploadKnowledge(
-  mentorId: string,
-  content: string
-): Promise<{ rootHash: string; sizeBytes: number }> {
-  const indexer = new Indexer(INDEXER_URL);
-  const signer = getSigner();
-
-  const encrypted = encrypt(content, mentorId);
-  const sizeBytes = encrypted.length;
-
-  // MemData untuk upload in-memory tanpa perlu file sementara
-  const memData = new MemData(new Uint8Array(encrypted));
-  const [result, uploadErr] = await indexer.upload(memData, RPC_URL, signer);
-  if (uploadErr) throw uploadErr;
-
-  // upload() returns single or multi-root result depending on file size
-  const rootHash = "rootHash" in result ? result.rootHash : result.rootHashes[0];
-  const txHash = "txHash" in result ? result.txHash : result.txHashes[0];
-  console.log(`[storage] uploaded mentorId=${mentorId} rootHash=${rootHash} tx=${txHash}`);
-  return { rootHash, sizeBytes };
-}
-
-// Download dan decrypt knowledge dari 0G Storage
-export async function downloadKnowledge(
-  mentorId: string,
-  rootHash: string
-): Promise<string> {
-  const indexer = new Indexer(INDEXER_URL);
-  const tmpPath = path.join(
-    os.tmpdir(),
-    `mentor-dl-${mentorId}-${Date.now()}.bin`
-  );
-
-  try {
-    const err = await indexer.download(rootHash, tmpPath, false);
-    if (err) throw err;
-    const data = await fs.readFile(tmpPath);
-    return decrypt(data, mentorId);
-  } finally {
-    await fs.unlink(tmpPath).catch(() => {});
+let sealClient: SealClient | null = null;
+function getSealClient(): SealClient {
+  if (!sealClient) {
+    sealClient = new SealClient({
+      suiClient: getClient(),
+      serverConfigs: SEAL_KEY_SERVER_IDS.map((objectId) => ({ objectId, weight: 1 })),
+      verifyKeyServers: false,
+    });
   }
+  return sealClient;
+}
+
+let walrusClient: WalrusClient | null = null;
+function getWalrusClient(): WalrusClient {
+  if (!walrusClient) {
+    const network = (process.env.SUI_NETWORK ?? "testnet") as "testnet" | "mainnet";
+    walrusClient = new WalrusClient({ network, suiClient: getClient() });
+  }
+  return walrusClient;
+}
+
+// Seal identity is namespaced to the mentor's `MentorState` object id, so
+// each mentor's knowledge has an independent on-chain access policy (see
+// sc/sources/seal_policy.move's `seal_approve`) instead of a shared AES key.
+function sealIdForState(stateId: string): Uint8Array {
+  return fromHex(stateId.startsWith("0x") ? stateId.slice(2) : stateId);
+}
+
+// Encrypts via Seal (decryption gated by the mentor's on-chain share/oracle/
+// allow-list policy, not by a key the backend hands out) then stores the
+// ciphertext on Walrus. Returns the blob id anchored on-chain via
+// `oracleUpdateBlobId`.
+export async function uploadKnowledge(
+  stateId: string,
+  content: string
+): Promise<{ blobId: string; sizeBytes: number }> {
+  const plaintext = new TextEncoder().encode(content);
+  const { encryptedObject } = await getSealClient().encrypt({
+    threshold: SEAL_THRESHOLD,
+    packageId: PACKAGE_ID,
+    id: toHex(sealIdForState(stateId)),
+    data: plaintext,
+  });
+
+  const { blobId } = await getWalrusClient().writeBlob({
+    blob: encryptedObject,
+    deletable: true,
+    epochs: WALRUS_EPOCHS,
+    signer: getOracleKeypair(),
+  });
+
+  return { blobId, sizeBytes: encryptedObject.length };
+}
+
+// Downloads the ciphertext from Walrus and asks Seal's key-servers to
+// decrypt it under the backend's own oracle session — approved via the
+// oracle-bypass branch of `seal_approve` (see sc/sources/seal_policy.move).
+export async function downloadKnowledge(
+  stateId: string,
+  sharePoolId: string,
+  blobId: string
+): Promise<string> {
+  const ciphertext = await getWalrusClient().readBlob({ blobId });
+
+  const sessionKey = await SessionKey.create({
+    address: getOracleKeypair().toSuiAddress(),
+    packageId: PACKAGE_ID,
+    ttlMin: 10,
+    suiClient: getClient(),
+  });
+  const { signature } = await getOracleKeypair().signPersonalMessage(sessionKey.getPersonalMessage());
+  sessionKey.setPersonalMessageSignature(signature);
+
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${PACKAGE_ID}::seal_policy::seal_approve`,
+    arguments: [
+      tx.pure.vector("u8", Array.from(sealIdForState(stateId))),
+      tx.object(stateId),
+      tx.object(sharePoolId),
+      tx.object(CONFIG_ID),
+    ],
+  });
+  const txBytes = await tx.build({ client: getClient(), onlyTransactionKind: true });
+
+  const plaintext = await getSealClient().decrypt({ data: ciphertext, sessionKey, txBytes });
+  return new TextDecoder().decode(plaintext);
 }
