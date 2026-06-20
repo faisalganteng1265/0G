@@ -1,18 +1,26 @@
 "use client";
 
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { Transaction } from "@mysten/sui/transactions";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 
 import { useTxToast } from "@/components/ToastProvider";
-import { LIVE_REFETCH_INTERVAL_MS, formatOg, getEventFromBlock, useMentorClaimable, useMentors, useVestingProgress } from "@/hooks/useMarketplace";
-import { hasMarketplaceAddress, MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
+import {
+  formatSui,
+  shortAddress,
+  useMentorRoyaltyClaimableBatch,
+  useMentorRoyaltyClaimedEvents,
+  useMentors,
+  useVestingClaimable,
+  useVestingProgress,
+} from "@/hooks/useMarketplace";
+import { CONFIG_ID, PACKAGE_ID } from "@/lib/contracts";
 
 import { subtleButtonClass, solidAccentBtn } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
-// Mirror of RevenueDistributor.sol constants
+// Mirror of revenue.move's MENTOR_BPS/CURATOR_BPS/BPS_DENOM constants
 const MENTOR_BPS = 6000;
 const CURATOR_BPS = 2500;
 const BPS_DENOM = 10000;
@@ -22,106 +30,52 @@ const curatorPct = Math.round((CURATOR_BPS / BPS_DENOM) * 100);
 const platformPct = Math.round((PLATFORM_BPS / BPS_DENOM) * 100);
 const curatorBoundary = mentorPct + curatorPct;
 
-type PayoutEvent = {
-  mentorId: number;
-  amount: bigint;
-  txHash: string;
-  blockNumber: bigint;
-};
-
 export default function EarningsView() {
-  const { address } = useAccount();
+  const account = useCurrentAccount();
+  const address = account?.address;
   const { data: mentors = [], isLoading: mentorsLoading } = useMentors();
-  const { writeContractAsync } = useWriteContract();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const txToast = useTxToast();
-  const publicClient = usePublicClient();
   const myMentors = address ? mentors.filter((mentor) => mentor.creator.toLowerCase() === address.toLowerCase()) : [];
 
-  // Batch fetch claimable royalty for all mentors I own
-  const { data: claimableResults } = useReadContracts({
-    contracts: myMentors.map((mentor) => ({
-      address: MARKETPLACE_ADDRESS,
-      abi: marketplaceAbi,
-      functionName: "getMentorClaimable" as const,
-      args: [BigInt(mentor.tokenId)],
-    })),
-    query: {
-      enabled: myMentors.length > 0 && hasMarketplaceAddress,
-      refetchInterval: LIVE_REFETCH_INTERVAL_MS,
-      refetchIntervalInBackground: false,
-      staleTime: 4_000,
-    },
-  });
+  const { data: claimableByPool = {} } = useMentorRoyaltyClaimableBatch(myMentors.map((mentor) => mentor.revenuePoolId));
 
-  const totalClaimable = claimableResults
-    ? claimableResults.reduce((sum, r) => sum + ((r.result as bigint | undefined) ?? BigInt(0)), BigInt(0))
-    : BigInt(0);
-  const claimableMentors = myMentors
-    .map((mentor, index) => ({
-      mentor,
-      amount: (claimableResults?.[index]?.result as bigint | undefined) ?? BigInt(0),
-    }))
-    .filter((item) => item.amount > BigInt(0));
+  const totalClaimableMist = myMentors.reduce((sum, mentor) => sum + (claimableByPool[mentor.revenuePoolId] ?? 0), 0);
+  const claimableMentors = myMentors.filter((mentor) => (claimableByPool[mentor.revenuePoolId] ?? 0) > 0);
 
-  // Total queries across all my mentors → estimate of revenue generated
   const totalQueries = myMentors.reduce((sum, m) => sum + m.totalQueries, 0);
 
-  // Read MentorRoyaltyClaimed events for current user's mentors
-  const { data: payoutEvents = [] } = useQuery<PayoutEvent[]>({
-    queryKey: ["payout-events", address, MARKETPLACE_ADDRESS],
-    enabled: Boolean(publicClient && address && hasMarketplaceAddress),
-    refetchInterval: LIVE_REFETCH_INTERVAL_MS,
-    refetchIntervalInBackground: false,
-    staleTime: 4_000,
-    queryFn: async () => {
-      if (!publicClient || !address) return [];
-      const currentBlock = await publicClient.getBlockNumber();
-      const fromBlock = getEventFromBlock(currentBlock);
-      const logs = await publicClient.getLogs({
-        address: MARKETPLACE_ADDRESS,
-        event: marketplaceAbi[2],
-        fromBlock,
-        toBlock: "latest",
-      });
-      return logs
-        .filter((log) => log.args.mentor?.toLowerCase() === address.toLowerCase())
-        .map((log) => ({
-          mentorId: Number(log.args?.mentorId ?? 0),
-          amount: (log.args?.amount as bigint) ?? BigInt(0),
-          txHash: log.transactionHash as string,
-          blockNumber: log.blockNumber as bigint,
-        }))
-        .sort((a, b) => Number(b.blockNumber - a.blockNumber));
-    },
-  });
+  const { data: allRoyaltyEvents = [] } = useMentorRoyaltyClaimedEvents();
+  const payoutEvents = address
+    ? allRoyaltyEvents.filter((event) => event.mentor.toLowerCase() === address.toLowerCase())
+    : [];
 
   const statCards = [
     ["◎", "Total Queries", String(totalQueries), "Across all my mentors", "on-chain"],
-    ["♕", "Mentor Royalty", formatOg(totalClaimable), "Claimable now", "from contract"],
+    ["♕", "Mentor Royalty", formatSui(totalClaimableMist), "Claimable now", "from contract"],
     ["♣", "Payout Events", String(payoutEvents.length), "Historical claims", "on-chain logs"],
     ["▱", "Active Mentors", String(myMentors.length), "Mentors I own", "registered"],
   ];
 
-  const vestingRows = myMentors.map((mentor) => [
-    mentor.name,
-    mentor.category,
-    "30 days",
-    mentor.lastUpdatedAt ? new Date((mentor.lastUpdatedAt + 30 * 24 * 60 * 60) * 1000).toLocaleDateString() : "-",
-    "On-chain",
-    "0%",
-    String(mentor.tokenId),
-  ]);
+  const vestingRows = myMentors.map((mentor) => ({
+    name: mentor.name,
+    category: mentor.category,
+    nftId: mentor.nftId,
+    stateId: mentor.stateId,
+    revenuePoolId: mentor.revenuePoolId,
+    vestingScheduleId: mentor.vestingScheduleId,
+  }));
 
   async function claimAllRoyalties() {
-    for (const { mentor } of claimableMentors) {
-      await txToast(`Claim ${mentor.name}`, () =>
-        writeContractAsync({
-          address: MARKETPLACE_ADDRESS,
-          abi: marketplaceAbi,
-          functionName: "claimMentorRoyalty",
-          args: [BigInt(mentor.tokenId)],
-        }),
-      );
+    for (const mentor of claimableMentors) {
+      await txToast(`Claim ${mentor.name}`, async () => {
+        const tx = new Transaction();
+        tx.moveCall({
+          target: `${PACKAGE_ID}::marketplace::claim_mentor_royalty`,
+          arguments: [tx.object(mentor.nftId), tx.object(mentor.revenuePoolId)],
+        });
+        return (await signAndExecute({ transaction: tx })).digest;
+      });
     }
   }
 
@@ -175,14 +129,14 @@ export default function EarningsView() {
             {[42, 84, 126, 168, 210].map((y) => (
               <line key={y} x1="42" x2="602" y1={y} y2={y} stroke="rgba(96,165,250,0.12)" />
             ))}
-            {["0G", "1.6K", "1.2K", "800", "400", "0"].map((label, i) => (
+            {["SUI", "1.6K", "1.2K", "800", "400", "0"].map((label, i) => (
               <text key={label} x="0" y={28 + i * 42} fill="#707b89" fontSize="11">{label}</text>
             ))}
             <path d="M42 190L60 150L78 142L96 160L116 176L136 184L156 178L176 190L196 154L216 104L236 122L256 98L276 91L296 80L316 42L336 24L356 52L376 39L396 31L416 18L436 62L456 106L476 129L496 151L516 132L536 115L556 108L576 98L596 135L616 101L636 87L656 76L676 113L696 42" stroke="#2dd4bf" strokeWidth="3" />
             <path d="M42 232L42 190L60 150L78 142L96 160L116 176L136 184L156 178L176 190L196 154L216 104L236 122L256 98L276 91L296 80L316 42L336 24L356 52L376 39L396 31L416 18L436 62L456 106L476 129L496 151L516 132L536 115L556 108L576 98L596 135L616 101L636 87L656 76L676 113L696 42L696 232Z" fill="url(#earningArea)" />
             <circle cx="696" cy="42" r="5" fill="#2dd4bf" />
             <text x="616" y="38" fill="#2dd4bf" fontSize="11" fontWeight="700">CURRENT</text>
-            <text x="616" y="62" fill="white" fontSize="13" fontWeight="700">12,840 OG</text>
+            <text x="616" y="62" fill="white" fontSize="13" fontWeight="700">12,840 SUI</text>
             <text x="616" y="84" fill="#2dd4bf" fontSize="11" fontWeight="700">▲ 12.4%</text>
             {["Apr 27", "May 4", "May 11", "May 18", "May 25", "May 31"].map((label, index) => (
               <text key={label} x={46 + index * 112} y="252" fill="#707b89" fontSize="11">{label}</text>
@@ -207,7 +161,7 @@ export default function EarningsView() {
               style={{ background: `conic-gradient(#2dd4bf 0 ${mentorPct}%, #67e8f9 ${mentorPct}% ${curatorBoundary}%, #475569 ${curatorBoundary}% 100%)` }}
             >
               <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#071014] text-center">
-                <span className="text-[13px] font-bold text-white">{formatOg(totalClaimable)}</span>
+                <span className="text-[13px] font-bold text-white">{formatSui(totalClaimableMist)}</span>
                 <span className="mt-1 text-[9px] uppercase tracking-[0.12em] text-[#707b89]">Claimable</span>
               </div>
             </div>
@@ -235,7 +189,7 @@ export default function EarningsView() {
             {myMentors.length === 0 ? (
               <p className="text-[11px] text-[#4b5563]">No mentors registered yet.</p>
             ) : myMentors.map((mentor) => (
-              <div key={mentor.tokenId} className="mb-3 last:mb-0">
+              <div key={mentor.stateId} className="mb-3 last:mb-0">
                 <div className="mb-1.5 flex items-center justify-between text-[10px]">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-[#2dd4bf]" />
@@ -257,7 +211,7 @@ export default function EarningsView() {
               <span className="text-[18px]">▣</span>
               <h2 className="text-[12px] font-bold uppercase tracking-[0.12em]">Claimable Rewards</h2>
             </div>
-            <p className="text-center text-[26px] font-bold text-white">{formatOg(totalClaimable)}</p>
+            <p className="text-center text-[26px] font-bold text-white">{formatSui(totalClaimableMist)}</p>
             <p className="mt-3 text-center text-[11px] text-[#d1d5db]">Available to claim</p>
           </div>
           <div className="p-4">
@@ -280,8 +234,8 @@ export default function EarningsView() {
           </div>
           {vestingRows.length === 0 ? (
             <div className="py-8 text-center text-[11px] text-[#4b5563]">No mentors found. Register a mentor first.</div>
-          ) : vestingRows.map(([mentor, subtitle, unlock, date, amount, progress, tokenId], index) => (
-            <VestingRow key={tokenId} row={{ mentor, subtitle, unlock, date, amount, progress, tokenId }} index={index} />
+          ) : vestingRows.map((row, index) => (
+            <VestingRow key={row.stateId} row={row} index={index} />
           ))}
           </div>
           </div>
@@ -301,16 +255,16 @@ export default function EarningsView() {
           {payoutEvents.length === 0 ? (
             <div className="py-8 text-center text-[11px] text-[#4b5563]">No payout events yet. Claim royalties to see activity here.</div>
           ) : payoutEvents.slice(0, 5).map((event) => {
-            const mentor = mentors.find((m) => m.tokenId === event.mentorId);
+            const mentor = myMentors.find((m) => m.revenuePoolId === event.poolId);
             return (
-              <div key={event.txHash} className="grid grid-cols-[1fr_1fr_0.6fr_0.7fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
+              <div key={event.txDigest} className="grid grid-cols-[1fr_1fr_0.6fr_0.7fr] items-center gap-3 border-b border-[rgba(96,165,250,0.12)] py-3 text-[11px]">
                 <div className="flex items-center gap-3">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#2dd4bf]/30 bg-[#2dd4bf]/10 text-[#2dd4bf]">♕</span>
                   <span className="text-[#d1d5db]">Mentor Royalty</span>
                 </div>
-                <span className="text-[#8b95a3]">{mentor?.name ?? `Mentor #${event.mentorId}`}</span>
-                <span className="text-[#8b95a3]">Block {event.blockNumber.toString()}</span>
-                <span className="text-right font-bold text-[#2dd4bf]">+{formatOg(event.amount)}</span>
+                <span className="text-[#8b95a3]">{mentor?.name ?? shortAddress(event.poolId)}</span>
+                <span className="text-[#8b95a3]">{event.timestampMs ? new Date(event.timestampMs).toLocaleDateString() : "-"}</span>
+                <span className="text-right font-bold text-[#2dd4bf]">+{formatSui(event.amountMist)}</span>
               </div>
             );
           })}
@@ -328,52 +282,51 @@ function VestingRow({
   index,
 }: {
   row: {
-    mentor: string;
-    subtitle: string;
-    unlock: string;
-    date: string;
-    amount: string;
-    progress: string;
-    tokenId?: string;
+    name: string;
+    category: string;
+    nftId: string;
+    stateId: string;
+    revenuePoolId: string;
+    vestingScheduleId: string;
   };
   index: number;
 }) {
-  const { writeContractAsync } = useWriteContract();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const txToast = useTxToast();
   const [showModal, setShowModal] = useState(false);
-  const tokenId = row.tokenId ? Number(row.tokenId) : undefined;
-  const claimable = useMentorClaimable(tokenId);
-  const vestingProgress = useVestingProgress(tokenId);
-  const liveAmount = tokenId !== undefined && claimable.data !== undefined ? formatOg(claimable.data as bigint) : row.amount;
-  const liveProgress =
-    tokenId !== undefined && vestingProgress.data !== undefined
-      ? `${Math.min(100, Number(vestingProgress.data) / 100)}%`
-      : row.progress;
+  const claimable = useVestingClaimable(row.vestingScheduleId);
+  const vestingProgress = useVestingProgress(row.vestingScheduleId);
+  const liveAmount = claimable.data !== undefined ? formatSui(claimable.data) : "-";
+  const liveProgress = vestingProgress.data !== undefined ? `${Math.min(100, vestingProgress.data / 100)}%` : "0%";
 
   async function vest() {
-    if (tokenId === undefined) return;
     setShowModal(false);
-    await txToast("Vest earnings", () =>
-      writeContractAsync({
-        address: MARKETPLACE_ADDRESS,
-        abi: marketplaceAbi,
-        functionName: "vestEarnings",
-        args: [BigInt(tokenId)],
-      }),
-    );
+    await txToast("Vest earnings", async () => {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${PACKAGE_ID}::marketplace::vest_earnings`,
+        arguments: [
+          tx.object(row.nftId),
+          tx.object(row.stateId),
+          tx.object(row.revenuePoolId),
+          tx.object(row.vestingScheduleId),
+          tx.object.clock(),
+        ],
+      });
+      return (await signAndExecute({ transaction: tx })).digest;
+    });
   }
 
   async function claim() {
-    if (tokenId === undefined) return;
     setShowModal(false);
-    await txToast("Claim vested", () =>
-      writeContractAsync({
-        address: MARKETPLACE_ADDRESS,
-        abi: marketplaceAbi,
-        functionName: "claimVested",
-        args: [BigInt(tokenId)],
-      }),
-    );
+    await txToast("Claim vested", async () => {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${PACKAGE_ID}::marketplace::claim_vested`,
+        arguments: [tx.object(row.nftId), tx.object(row.vestingScheduleId), tx.object(CONFIG_ID), tx.object.clock()],
+      });
+      return (await signAndExecute({ transaction: tx })).digest;
+    });
   }
 
   return (
@@ -382,13 +335,13 @@ function VestingRow({
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#2dd4bf]/35 bg-[#2dd4bf]/10 text-[#2dd4bf]">{["◈", "⬢", "⬡", "⛨"][index % 4]}</div>
           <div>
-            <p className="font-bold text-white">{row.mentor}</p>
-            <p className="text-[10px] text-[#707b89]">{row.subtitle}</p>
+            <p className="font-bold text-white">{row.name}</p>
+            <p className="text-[10px] text-[#707b89]">{row.category}</p>
           </div>
         </div>
         <div>
-          <p className="font-bold text-white">{row.unlock}</p>
-          <p className="text-[10px] text-[#707b89]">{row.date}</p>
+          <p className="font-bold text-white">vesting</p>
+          <p className="text-[10px] text-[#707b89]">on-chain</p>
         </div>
         <p className="font-bold text-white">{liveAmount}</p>
         <div className="flex items-center gap-3">
@@ -398,8 +351,7 @@ function VestingRow({
           <span className="text-[10px] text-[#d1d5db]">{liveProgress}</span>
         </div>
         <button
-          className="text-center text-[#2dd4bf] disabled:opacity-30"
-          disabled={tokenId === undefined}
+          className="text-center text-[#2dd4bf]"
           onClick={() => setShowModal(true)}
           type="button"
         >›</button>
@@ -409,7 +361,7 @@ function VestingRow({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-[340px] rounded border border-[rgba(45,212,191,0.3)] bg-black p-5 shadow-[0_0_40px_rgba(45,212,191,0.1)]">
             <div className="mb-1 flex items-center justify-between">
-              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-white">{row.mentor}</h3>
+              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-white">{row.name}</h3>
               <button onClick={() => setShowModal(false)} className="text-[#6b7280] hover:text-white" type="button">×</button>
             </div>
             <p className="mb-5 text-[10px] text-[#707b89]">Choose an action for this vesting position.</p>

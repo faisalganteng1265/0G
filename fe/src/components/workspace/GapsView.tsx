@@ -85,19 +85,21 @@ export default function GapsView() {
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [showRowsMenu, setShowRowsMenu] = useState(false);
 
-  const liveGaps = gapEvents.map((event) => {
-    const mentor = mentors.find((item) => item.tokenId === event.tokenId);
-    const priority = event.count > 20 ? "CRITICAL" : event.count > 10 ? "HIGH" : event.count > 3 ? "MEDIUM" : "LOW";
-    const status = event.type === "GapResolved" ? "RESOLVED" : "IN REVIEW";
-    const confidence = Math.max(20, 100 - event.count * 4);
+  const liveGaps = gapEvents.map((event, idx) => {
+    const mentor = mentors.find((item) => item.stateId === event.stateId);
+    const earlier = gapEvents.slice(idx + 1).find((e) => e.stateId === event.stateId);
+    const previousCount = earlier ? earlier.gapCount : 0;
+    const status = event.gapCount < previousCount ? "RESOLVED" : "IN REVIEW";
+    const priority = event.gapCount > 20 ? "CRITICAL" : event.gapCount > 10 ? "HIGH" : event.gapCount > 3 ? "MEDIUM" : "LOW";
+    const confidence = Math.max(20, 100 - event.gapCount * 4);
     return {
       title: status === "RESOLVED" ? "Gap resolved by oracle" : "Low-confidence answer detected",
-      mentor: mentor?.name ?? `Mentor #${event.tokenId}`,
+      mentor: mentor?.name ?? "Mentor",
       category: mentor?.category ?? "Oracle",
       priority,
       confidence: `${confidence}%`,
-      queries: String(event.count),
-      updated: `Block ${event.blockNumber.toString()}`,
+      queries: String(event.gapCount),
+      updated: event.timestampMs ? new Date(event.timestampMs).toLocaleString() : "-",
       severity: priority === "LOW" ? "Low severity" : priority === "MEDIUM" ? "Moderate severity" : "High severity",
       status,
     };

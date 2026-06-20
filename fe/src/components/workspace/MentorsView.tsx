@@ -1,28 +1,30 @@
 "use client";
 
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { Transaction } from "@mysten/sui/transactions";
 import { useState, type FormEvent } from "react";
-import { useAccount, useWriteContract } from "wagmi";
 
 import { useTxToast } from "@/components/ToastProvider";
-import { useMentorActivityEvents, useMentors } from "@/hooks/useMarketplace";
+import { statusLabel, useMentorActivityEvents, useMentors } from "@/hooks/useMarketplace";
 import { api } from "@/lib/api";
-import { MARKETPLACE_ADDRESS, marketplaceAbi } from "@/lib/contracts";
+import { PACKAGE_ID } from "@/lib/contracts";
 
 import { subtleButtonClass, accentButtonClass, solidAccentBtn } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
 export default function MentorsView() {
-  const { address } = useAccount();
+  const account = useCurrentAccount();
+  const address = account?.address;
   const { data: onchainMentors = [], refetch, isLoading: mentorsLoading } = useMentors();
   const { data: activityEvents = [] } = useMentorActivityEvents();
-  const { writeContractAsync } = useWriteContract();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const txToast = useTxToast();
   const [isMintOpen, setIsMintOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [mintName, setMintName] = useState("");
   const [mintCategory, setMintCategory] = useState("");
-  const [uploadTokenId, setUploadTokenId] = useState("");
+  const [uploadStateId, setUploadStateId] = useState("");
   const [uploadText, setUploadText] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [modalBusy, setModalBusy] = useState(false);
@@ -35,16 +37,17 @@ export default function MentorsView() {
     : [];
   const mentors = ownedOnchainMentors.map((mentor, index) => ({
     name: mentor.name,
-    status: (mentor.status === 2 ? "READY" : mentor.status === 1 ? "REVIEW" : "DRAFT") as "DRAFT" | "REVIEW" | "READY",
+    status: statusLabel(mentor.status) as "DRAFT" | "REVIEW" | "READY" | "SUSPENDED",
     category: mentor.category,
     categoryColor: index % 2 === 0 ? "#4ade80" : "#2dd4bf",
-    description: mentor.storageRef || "Knowledge upload pending.",
+    description: mentor.blobId || "Knowledge upload pending.",
     docs: mentor.totalQueries,
     gaps: mentor.gapCount,
     confidence: mentor.confidenceScore,
-    updatedAgo: mentor.lastUpdatedAt ? new Date(mentor.lastUpdatedAt * 1000).toLocaleDateString() : "-",
-    version: `#${mentor.tokenId}`,
-    tokenId: mentor.tokenId,
+    updatedAgo: mentor.lastUpdatedAtMs ? new Date(mentor.lastUpdatedAtMs).toLocaleDateString() : "-",
+    version: `#${mentor.stateId.slice(2, 8)}`,
+    stateId: mentor.stateId,
+    nftId: mentor.nftId,
     image: mentorImages[index % mentorImages.length],
   }));
   const knowledgeVaultFiles = mentors.filter((mentor) => mentor.description && mentor.description !== "Knowledge upload pending.").length;
@@ -55,13 +58,13 @@ export default function MentorsView() {
   const avgConfidenceLabel = mentors.length > 0 ? `${avgConfidence.toFixed(1)}%` : "0%";
   const pendingESign = mentors.filter((mentor) => mentor.status === "REVIEW").length;
   const activeDrafts = mentors.filter((mentor) => mentor.status === "DRAFT").length;
-  const ownedTokenIds = new Set(mentors.map((mentor) => mentor.tokenId));
-  const recentActivity = activityEvents.filter((event) => ownedTokenIds.has(event.tokenId)).slice(0, 4).map((event) => {
-    const mentor = mentors.find((item) => item.tokenId === event.tokenId);
+  const ownedStateIds = new Set(mentors.map((mentor) => mentor.stateId));
+  const recentActivity = activityEvents.filter((event) => ownedStateIds.has(event.stateId)).slice(0, 4).map((event) => {
+    const mentor = mentors.find((item) => item.stateId === event.stateId);
     return {
       ...event,
-      title: event.type === "MentorRegistered" ? event.title : `${mentor?.name ?? `Mentor #${event.tokenId}`} ${event.title.toLowerCase()}`,
-      time: `Block ${event.blockNumber.toString()}`,
+      title: event.type === "MentorRegistered" ? event.title : `${mentor?.name ?? "Mentor"} ${event.title.toLowerCase()}`,
+      time: event.timestampMs ? new Date(event.timestampMs).toLocaleString() : "-",
     };
   });
 
@@ -69,14 +72,19 @@ export default function MentorsView() {
     event.preventDefault();
     setModalBusy(true);
     try {
-      await txToast("Mint mentor", () =>
-        writeContractAsync({
-          address: MARKETPLACE_ADDRESS,
-          abi: marketplaceAbi,
-          functionName: "registerMentor",
-          args: [mintName, mintCategory || "General", "pending"],
-        }),
-      );
+      await txToast("Mint mentor", async () => {
+        const tx = new Transaction();
+        tx.moveCall({
+          target: `${PACKAGE_ID}::marketplace::register_mentor`,
+          arguments: [
+            tx.pure.string(mintName),
+            tx.pure.string(mintCategory || "General"),
+            tx.pure.string(""),
+            tx.object.clock(),
+          ],
+        });
+        return (await signAndExecute({ transaction: tx })).digest;
+      });
       setMintName("");
       setMintCategory("");
       setIsMintOpen(false);
@@ -90,13 +98,12 @@ export default function MentorsView() {
     event.preventDefault();
     setModalBusy(true);
     const formData = new FormData();
-    formData.set("mentorId", uploadTokenId);
-    formData.set("tokenId", uploadTokenId);
+    formData.set("stateId", uploadStateId);
     if (uploadFile) formData.set("file", uploadFile);
     else formData.set("text", uploadText);
     try {
       await txToast("Upload knowledge", () => api.uploadKnowledge(formData));
-      setUploadTokenId("");
+      setUploadStateId("");
       setUploadText("");
       setUploadFile(null);
       setIsUploadOpen(false);
@@ -106,10 +113,11 @@ export default function MentorsView() {
     }
   }
 
-  const statusBadge: Record<"DRAFT" | "REVIEW" | "READY", string> = {
+  const statusBadge: Record<"DRAFT" | "REVIEW" | "READY" | "SUSPENDED", string> = {
     DRAFT: "border-[#374151] bg-[#111317] text-[#9ca3af]",
     REVIEW: "border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.08)] text-[#fbbf24]",
     READY: "border-[rgba(45,212,191,0.3)] bg-[rgba(45,212,191,0.08)] text-[#2dd4bf]",
+    SUSPENDED: "border-[rgba(248,113,113,0.35)] bg-[rgba(248,113,113,0.08)] text-[#f87171]",
   };
 
   const tagPill =
@@ -232,7 +240,7 @@ export default function MentorsView() {
               </div>
             )}
             {mentors.map((mentor) => (
-              <div key={mentor.tokenId} className="border-b border-[rgba(96,165,250,0.13)] p-3 last:border-b-0">
+              <div key={mentor.stateId} className="border-b border-[rgba(96,165,250,0.13)] p-3 last:border-b-0">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-[72px_minmax(0,1fr)_270px]">
                   {/* Thumbnail */}
                   <div
@@ -295,7 +303,7 @@ export default function MentorsView() {
                     </div>
                     <button
                       className={`whitespace-nowrap px-3 py-1.5 text-[9px] ${accentButtonClass}`}
-                      onClick={() => { setUploadTokenId(String(mentor.tokenId)); setIsUploadOpen(true); }}
+                      onClick={() => { setUploadStateId(mentor.stateId); setIsUploadOpen(true); }}
                       type="button"
                     >
                       OPEN STUDIO
@@ -387,9 +395,9 @@ export default function MentorsView() {
               {recentActivity.length === 0 ? (
                 <div className="py-6 text-center text-[11px] text-[#4b5563]">No on-chain mentor activity yet.</div>
               ) : recentActivity.map((item) => (
-                <div key={`${item.txHash}-${item.type}-${item.tokenId}`} className="flex items-start gap-3">
+                <div key={`${item.txDigest}-${item.type}-${item.stateId}`} className="flex items-start gap-3">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-[#2a2d32] bg-[#101215] text-[12px] text-[#2dd4bf]">
-                    {item.type === "MentorRegistered" ? "⬡" : item.type === "StorageRefUpdated" ? "▣" : "✓"}
+                    {item.type === "MentorRegistered" ? "⬡" : item.type === "StorageUpdated" ? "▣" : "✓"}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-semibold text-white">{item.title}</p>
@@ -428,12 +436,12 @@ export default function MentorsView() {
               <select
                 className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none"
                 required
-                value={uploadTokenId}
-                onChange={(event) => setUploadTokenId(event.target.value)}
+                value={uploadStateId}
+                onChange={(event) => setUploadStateId(event.target.value)}
               >
                 <option value="">— Select mentor —</option>
                 {mentors.map((m) => (
-                  <option key={m.tokenId} value={String(m.tokenId)}>
+                  <option key={m.stateId} value={m.stateId}>
                     {m.name} — {m.category || "General"}
                   </option>
                 ))}
@@ -448,7 +456,7 @@ export default function MentorsView() {
                 Text-based files only: .txt, .md, .csv, or .json. PDF and DOCX extraction is not enabled.
               </p>
               <textarea className="min-h-32 w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Or paste plain knowledge text" value={uploadText} onChange={(event) => setUploadText(event.target.value)} />
-              <button className={`w-full py-2.5 text-[10px] ${solidAccentBtn}`} disabled={modalBusy || (!uploadFile && !uploadText.trim())} type="submit">{modalBusy ? "UPLOADING..." : "UPLOAD TO 0G STORAGE"}</button>
+              <button className={`w-full py-2.5 text-[10px] ${solidAccentBtn}`} disabled={modalBusy || (!uploadFile && !uploadText.trim())} type="submit">{modalBusy ? "UPLOADING..." : "UPLOAD TO WALRUS"}</button>
             </div>
           </form>
         </div>

@@ -1,26 +1,26 @@
 "use client";
 
+import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { Transaction } from "@mysten/sui/transactions";
 import { useState, type FormEvent } from "react";
-import { isAddress, type Address } from "viem";
-import { useAccount, useWriteContract } from "wagmi";
 
 import { useTxToast } from "@/components/ToastProvider";
 import { shortAddress, useSecurityEvents } from "@/hooks/useMarketplace";
-import { api } from "@/lib/api";
-import { INFT_ADDRESS, inftAbi } from "@/lib/contracts";
+import { PACKAGE_ID } from "@/lib/contracts";
 
 import { subtleButtonClass } from "./shared";
 
 const panelClass = "border border-[rgba(96,165,250,0.24)] bg-black";
 
+const OBJECT_ID_RE = /^0x[0-9a-fA-F]{1,64}$/;
+
 export default function SecurityView() {
-  const { address } = useAccount();
-  const { writeContractAsync } = useWriteContract();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const txToast = useTxToast();
   const { data: securityEvents = [] } = useSecurityEvents();
   const [transferMode, setTransferMode] = useState<"transfer" | "clone" | null>(null);
-  const [tokenId, setTokenId] = useState("");
-  const [mentorId, setMentorId] = useState("");
+  const [nftId, setNftId] = useState("");
+  const [stateId, setStateId] = useState("");
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,8 +29,8 @@ export default function SecurityView() {
   const [activeTab, setActiveTab] = useState("ALL");
 
   const filteredEvents = activeTab === "ALL" ? securityEvents
-    : activeTab === "ACCESS" ? securityEvents.filter((e) => e.type === "Transfer")
-    : activeTab === "STORAGE" || activeTab === "TEE" ? securityEvents.filter((e) => e.type === "StorageRefUpdated")
+    : activeTab === "ACCESS" ? securityEvents.filter((e) => e.type === "MentorCloned")
+    : activeTab === "STORAGE" || activeTab === "TEE" ? securityEvents.filter((e) => e.type === "StorageUpdated")
     : [];
 
   const totalPages = Math.max(1, Math.ceil(filteredEvents.length / rowsPerPage));
@@ -39,17 +39,17 @@ export default function SecurityView() {
   const endIdx = Math.min(startIdx + rowsPerPage, filteredEvents.length);
 
   const logs = filteredEvents.slice(startIdx, endIdx).map((event) => [
-    event.type === "Transfer" ? "⇄" : "▱",
-    event.type === "Transfer" ? "INFT_TRANSFER" : "STORAGE_COMMIT",
-    `Mentor #${event.tokenId} ${event.detail}`,
-    shortAddress(event.txHash),
-    "INFT_SC",
+    event.type === "MentorCloned" ? "⇄" : "▱",
+    event.type === "MentorCloned" ? "MENTOR_CLONED" : "STORAGE_COMMIT",
+    event.detail,
+    shortAddress(event.txDigest),
+    "SUI_MOVE",
     "VERIFIED",
-    `Block ${event.blockNumber.toString()}`,
+    event.timestampMs ? new Date(event.timestampMs).toLocaleString() : "-",
   ]);
   const securityStats = [
     ["⛨", "Audit Events", String(securityEvents.length), "↑ on-chain", "#2dd4bf"],
-    ["⛨", "TEE Verified", "99.2%", "↑ 0.6% vs last 24h", "#2dd4bf"],
+    ["⛨", "Seal Verified", "99.2%", "↑ 0.6% vs last 24h", "#2dd4bf"],
     ["△", "Failed Checks", "0", "↓ -12.5% vs last 24h", "#ef4444"],
     ["◔", "Avg Response SLA", "—", "monitoring", "#2dd4bf"],
   ];
@@ -122,11 +122,11 @@ export default function SecurityView() {
             </div>
             {logs.length === 0 && (
               <div className="px-4 py-8 text-center text-[11px] text-[#4b5563]">
-                {activeTab === "ALL" ? "No on-chain events yet. Transfer or clone an INFT to generate logs." : `No ${activeTab} events detected on-chain.`}
+                {activeTab === "ALL" ? "No on-chain events yet. Transfer or clone a mentor to generate logs." : `No ${activeTab} events detected on-chain.`}
               </div>
             )}
-            {logs.map(([icon, event, detail, proof, source, severity, time]) => (
-              <div key={`${event}-${time}`} className="grid grid-cols-[1fr_1.55fr_0.78fr_0.72fr_0.66fr_0.65fr_0.56fr] items-center gap-3 border-t border-[rgba(96,165,250,0.12)] px-3 py-3 text-[10px]">
+            {logs.map(([icon, event, detail, proof, source, severity, time], index) => (
+              <div key={`${event}-${index}`} className="grid grid-cols-[1fr_1.55fr_0.78fr_0.72fr_0.66fr_0.65fr_0.56fr] items-center gap-3 border-t border-[rgba(96,165,250,0.12)] px-3 py-3 text-[10px]">
                 <span className="flex items-center gap-2 font-bold text-[#2dd4bf]"><span>{icon}</span>{event}</span>
                 <span className="truncate text-[#d1d5db]">{detail}</span>
                 <span className="text-[#8b95a3]">{proof}</span>
@@ -218,7 +218,7 @@ export default function SecurityView() {
               <button className="text-[10px] font-bold text-[#2dd4bf]">View All</button>
             </div>
             {[
-              ["TEE Health", "99.3%"],
+              ["Seal Policy Health", "99.3%"],
               ["Storage Integrity", "98.7%"],
               ["Access Compliance", "97.6%"],
               ["Signature Coverage", "96.1%"],
@@ -236,8 +236,8 @@ export default function SecurityView() {
               <span>0%</span><span>50%</span><span>100%</span>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`} onClick={() => setTransferMode("transfer")} type="button">TRANSFER INFT</button>
-              <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`} onClick={() => setTransferMode("clone")} type="button">CLONE INFT</button>
+              <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`} onClick={() => setTransferMode("transfer")} type="button">TRANSFER MENTOR</button>
+              <button className={`${subtleButtonClass} px-3 py-2 text-[10px]`} onClick={() => setTransferMode("clone")} type="button">CLONE MENTOR</button>
             </div>
           </div>
 
@@ -253,7 +253,7 @@ export default function SecurityView() {
               ["Failed access check spike", "HIGH", "ACCESS_SVC"],
               ["Storage integrity drift detected", "MEDIUM", "STORAGE_N1"],
               ["Signature coverage below 97%", "MEDIUM", "ESIGN_SVC"],
-              ["Enclave uptime below threshold", "LOW", "ENCLAVE_N1"],
+              ["Key-server uptime below threshold", "LOW", "SEAL_N1"],
             ].map(([title, severity, source]) => (
               <div key={title} className="mb-3 grid grid-cols-[22px_1fr_auto_auto] items-center gap-2 text-[10px]">
                 <span className={severity === "HIGH" ? "text-red-400" : severity === "MEDIUM" ? "text-yellow-300" : "text-emerald-300"}>△</span>
@@ -275,7 +275,7 @@ export default function SecurityView() {
             <div className="relative pl-4">
               <div className="absolute left-[5px] top-2 h-[112px] w-px bg-[#2dd4bf]/50" />
               {[
-                ["TEE attestation verified for NODE_01", "2 min ago"],
+                ["Seal key-server approved decryption", "2 min ago"],
                 ["Mentor consent package signed", "18 min ago"],
                 ["Storage commit successful", "41 min ago"],
                 ["Shareholder access validated", "1 hr ago"],
@@ -297,35 +297,46 @@ export default function SecurityView() {
             className={`${panelClass} w-full max-w-[500px] rounded-[7px] p-4`}
             onSubmit={async (event: FormEvent) => {
               event.preventDefault();
-              if (!isAddress(to)) return;
+              if (!OBJECT_ID_RE.test(nftId) || !OBJECT_ID_RE.test(to)) return;
+              if (transferMode === "clone" && !OBJECT_ID_RE.test(stateId)) return;
               setBusy(true);
               try {
                 const mode = transferMode;
-                const body = { mentorId, tokenId: Number(tokenId), from: address, to };
-                await txToast(mode === "transfer" ? "Transfer INFT" : "Clone INFT", async () => {
-                  const proof = mode === "transfer" ? await api.signTransfer(body) : await api.signClone(body);
-                  return writeContractAsync({
-                    address: INFT_ADDRESS,
-                    abi: inftAbi,
-                    functionName: mode === "transfer" ? "iTransfer" : "iClone",
-                    args: [to as Address, BigInt(tokenId), proof.proofs as never],
-                  });
+                await txToast(mode === "transfer" ? "Transfer mentor" : "Clone mentor", async () => {
+                  const tx = new Transaction();
+                  if (mode === "transfer") {
+                    tx.moveCall({
+                      target: `${PACKAGE_ID}::mentor_nft::transfer_mentor`,
+                      arguments: [tx.object(nftId), tx.pure.address(to)],
+                    });
+                  } else {
+                    tx.moveCall({
+                      target: `${PACKAGE_ID}::marketplace::clone_mentor`,
+                      arguments: [tx.object(nftId), tx.object(stateId), tx.pure.address(to), tx.object.clock()],
+                    });
+                  }
+                  return (await signAndExecute({ transaction: tx })).digest;
                 });
                 setTransferMode(null);
+                setNftId("");
+                setStateId("");
+                setTo("");
               } finally {
                 setBusy(false);
               }
             }}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">{transferMode === "transfer" ? "Transfer INFT" : "Clone INFT"}</h2>
+              <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-white">{transferMode === "transfer" ? "Transfer Mentor" : "Clone Mentor"}</h2>
               <button className="text-[#8b95a3]" onClick={() => setTransferMode(null)} type="button">×</button>
             </div>
             <div className="space-y-3">
-              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Mentor ID / key namespace" required value={mentorId} onChange={(event) => setMentorId(event.target.value)} />
-              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Token ID" required value={tokenId} onChange={(event) => setTokenId(event.target.value)} />
-              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Destination address" required value={to} onChange={(event) => setTo(event.target.value)} />
-              <button className={`${subtleButtonClass} w-full px-3 py-2.5 text-[10px]`} disabled={busy || !isAddress(to)} type="submit">{busy ? "SIGNING PROOF..." : "REQUEST ORACLE PROOF"}</button>
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Mentor NFT object ID (0x...)" required value={nftId} onChange={(event) => setNftId(event.target.value)} />
+              {transferMode === "clone" && (
+                <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Mentor state object ID (0x...)" required value={stateId} onChange={(event) => setStateId(event.target.value)} />
+              )}
+              <input className="w-full rounded border border-[#26333d] bg-[#050607] px-3 py-2 text-xs text-white outline-none" placeholder="Destination address (0x...)" required value={to} onChange={(event) => setTo(event.target.value)} />
+              <button className={`${subtleButtonClass} w-full px-3 py-2.5 text-[10px]`} disabled={busy} type="submit">{busy ? "SIGNING..." : transferMode === "transfer" ? "TRANSFER" : "CLONE"}</button>
             </div>
           </form>
         </div>
