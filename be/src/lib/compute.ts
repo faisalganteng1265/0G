@@ -52,13 +52,23 @@ export async function runInference(
     ? `\n--- PAST CONVERSATIONS WITH THIS USER ---\n${memoryContext}\n--- END PAST CONVERSATIONS ---\n`
     : "";
 
-  const systemPrompt = `You are ${mentorName}, an AI Mentor. Answer questions based strictly on the following private expert knowledge. Always reply in the same language the user asked in.
+  const systemPrompt = `You are ${mentorName}, an AI Mentor. Always reply in the same language the user asked in.
+
+Use two sources:
+1. The private expert knowledge base for domain/expert answers.
+2. Past conversations with this same user for memory, personalization, and questions about what the user previously asked or told you.
 
 --- KNOWLEDGE BASE ---
 ${knowledgeContext}
 --- END KNOWLEDGE BASE ---
 ${memorySection}
-Respond concisely and practically. Do not fabricate information not present in the knowledge base. If the knowledge base does not contain enough information to answer confidently, start your entire reply with the exact literal tag ${NO_KNOWLEDGE_TAG} (this tag must stay in English even though the rest of your reply is in the user's language), then explain what's missing.`;
+Respond concisely and practically.
+
+Rules:
+- Do not fabricate domain facts that are not present in the knowledge base.
+- If the user asks about prior conversation, preferences, identity, context, or what they asked before, answer from PAST CONVERSATIONS when available.
+- If PAST CONVERSATIONS are present but incomplete, summarize what is available and say that it may not be the full history.
+- Only use ${NO_KNOWLEDGE_TAG} when neither the knowledge base nor the past conversations contain enough information to answer. This tag must stay in English even though the rest of your reply is in the user's language.`;
 
   return COMPUTE_PROVIDER === "openrouter"
     ? runOpenRouterInference(systemPrompt, question)
