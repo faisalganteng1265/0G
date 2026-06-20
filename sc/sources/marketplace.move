@@ -49,8 +49,9 @@ public fun register_mentor(
     let revenue_pool = revenue::new_pool(state_id, ctx);
     let revenue_pool_id = object::id(&revenue_pool);
     let vesting_schedule = vesting::new_schedule(state_id, ctx);
+    let vesting_schedule_id = object::id(&vesting_schedule);
 
-    mentor_nft::link_pools(&mut state, share_pool_id, revenue_pool_id);
+    mentor_nft::link_pools(&mut state, share_pool_id, revenue_pool_id, vesting_schedule_id);
 
     event::emit(MentorRegistered {
         nft_id: object::id(&nft),
@@ -84,8 +85,9 @@ public fun clone_mentor(
     let revenue_pool = revenue::new_pool(new_state_id, ctx);
     let revenue_pool_id = object::id(&revenue_pool);
     let vesting_schedule = vesting::new_schedule(new_state_id, ctx);
+    let vesting_schedule_id = object::id(&vesting_schedule);
 
-    mentor_nft::link_pools(&mut new_state, share_pool_id, revenue_pool_id);
+    mentor_nft::link_pools(&mut new_state, share_pool_id, revenue_pool_id, vesting_schedule_id);
 
     event::emit(MentorRegistered {
         nft_id: object::id(&new_nft),

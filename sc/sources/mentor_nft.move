@@ -40,6 +40,7 @@ public struct MentorState has key {
     last_updated_at: u64,
     share_pool_id: ID,
     revenue_pool_id: ID,
+    vesting_schedule_id: ID,
     pools_linked: bool,
     allow_list: VecSet<address>,
 }
@@ -104,6 +105,7 @@ fun mint(
         last_updated_at: now,
         share_pool_id: state_id, // placeholder until link_pools
         revenue_pool_id: state_id, // placeholder until link_pools
+        vesting_schedule_id: state_id, // placeholder until link_pools
         pools_linked: false,
         allow_list: vec_set::empty(),
     };
@@ -158,13 +160,20 @@ public fun clone_mentor(
     (new_nft, new_state)
 }
 
-/// Called once, right after the mentor's `SharePool`/`RevenuePool` shared
-/// objects are created, so `seal_policy` and clients can discover them from
-/// the mentor's own state object instead of a separate index.
-public fun link_pools(state: &mut MentorState, share_pool_id: ID, revenue_pool_id: ID) {
+/// Called once, right after the mentor's `SharePool`/`RevenuePool`/
+/// `VestingSchedule` shared objects are created, so `seal_policy` and
+/// clients can discover them from the mentor's own state object instead of
+/// a separate index.
+public fun link_pools(
+    state: &mut MentorState,
+    share_pool_id: ID,
+    revenue_pool_id: ID,
+    vesting_schedule_id: ID,
+) {
     assert!(!state.pools_linked, EPoolsAlreadyLinked);
     state.share_pool_id = share_pool_id;
     state.revenue_pool_id = revenue_pool_id;
+    state.vesting_schedule_id = vesting_schedule_id;
     state.pools_linked = true;
 }
 
@@ -285,6 +294,7 @@ public fun total_queries(state: &MentorState): u32 { state.total_queries }
 public fun status(state: &MentorState): u8 { state.status }
 public fun share_pool_id(state: &MentorState): ID { state.share_pool_id }
 public fun revenue_pool_id(state: &MentorState): ID { state.revenue_pool_id }
+public fun vesting_schedule_id(state: &MentorState): ID { state.vesting_schedule_id }
 public fun pools_linked(state: &MentorState): bool { state.pools_linked }
 public fun has_access(state: &MentorState, user: address): bool { state.allow_list.contains(&user) }
 
