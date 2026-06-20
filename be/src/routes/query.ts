@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { downloadKnowledge } from "../lib/storage.js";
 import { NO_KNOWLEDGE_TAG, runInference } from "../lib/compute.js";
+import { recallMemory, rememberExchange } from "../lib/memory.js";
 import {
   checkQueryAccess,
   getMentorState,
@@ -66,8 +67,13 @@ router.post("/", async (req: Request, res: Response) => {
     // 3. Download + Seal-decrypt knowledge from Walrus.
     const knowledgeContext = await downloadKnowledge(stateId, mentorState.sharePoolId, mentorState.blobId);
 
+    // 3b. Recall past exchanges between this specific querier and this
+    // mentor (Walrus Memory / MemWal) — durable, cross-session memory, not
+    // just a one-shot knowledge-base lookup.
+    const memoryContext = await recallMemory(stateId, settlement.userAddress, question);
+
     // 4. Run inference inside an Atoma confidential-compute (TEE) node.
-    const result = await runInference(question, knowledgeContext, "Mentor");
+    const result = await runInference(question, knowledgeContext, "Mentor", memoryContext);
 
     // 5. Confidence scoring: the model is instructed to lead with a literal
     //    tag (not an English phrase) when it can't answer confidently, so
@@ -89,6 +95,9 @@ router.post("/", async (req: Request, res: Response) => {
       if (signalsLowConfidence) await oracleIncrementGap(stateId);
     })().catch((err) => console.error("[query] oracle update failed:", err));
 
+    // Fire-and-forget memory write — store this exchange for next time.
+    rememberExchange(stateId, settlement.userAddress, question, displayAnswer);
+
     res.json({
       ok: true,
       answer: displayAnswer,
@@ -99,6 +108,7 @@ router.post("/", async (req: Request, res: Response) => {
       access,
       settlement: { txDigest: settlementTxDigest, querier: settlement.userAddress },
       oracle: { confidenceUpdated: newConfidence, gapFlagged: signalsLowConfidence },
+      memory: { recalled: memoryContext.length > 0 },
     });
   } catch (err) {
     console.error("[query] error:", err);

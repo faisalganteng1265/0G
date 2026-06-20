@@ -25,7 +25,17 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { PACKAGE_ID } from "@/lib/contracts";
 import { useTxToast } from "@/components/ToastProvider";
-import { formatSui, statusLabel, useGapEvents, useMarketQuote, useMentors, useShareBalance, type Mentor } from "@/hooks/useMarketplace";
+import {
+  formatSui,
+  statusLabel,
+  useConfidenceHistory,
+  useGapEvents,
+  useMarketQuote,
+  useMentors,
+  useShareBalance,
+  type ConfidencePoint,
+  type Mentor,
+} from "@/hooks/useMarketplace";
 
 const mentorImages = [
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDmEXNoAf-cmrKUiwhuPOpaf-1mlPbR4cehM2rReUiOo2pR5YTe2Y_fOieBJYQw_jjpObE2rUSUeNDpZXLLkfqIKq9eDx6Fq3naaIJ6NOUdh6TvXdSpR1mBGR9lbNuKz4l-ipSme9cTTlN69LdjblpvS-GdoEpVRO9MKyUXZf-pgQ2gP1ewqG9FgLo7t-LG4nmGXSCJbKBwUhTzVhejUHG9tF_1qCcdCRUc30KxL-C4qKOU2qD6qXSfUOcieWVkEwOxSK5b6CoRPc0",
@@ -102,6 +112,47 @@ function Sparkline({ tone = "teal" }: { tone?: "teal" | "blue" | "amber" }) {
         opacity="0.08"
       />
     </svg>
+  );
+}
+
+// Plots the mentor's on-chain confidence_score across every query it has
+// answered — visible proof the agent's self-assessment evolves over time,
+// not a single static number.
+function ConfidenceTrajectory({ history }: { history: ConfidencePoint[] }) {
+  if (history.length === 0) {
+    return <p className="text-[10px] text-[#6b7280]">No confidence history yet — ask the first question.</p>;
+  }
+
+  const width = 160;
+  const height = 36;
+  const points =
+    history.length === 1
+      ? [
+          { x: 0, y: height - (history[0].score / 100) * height },
+          { x: width, y: height - (history[0].score / 100) * height },
+        ]
+      : history.map((point, idx) => ({
+          x: (idx / (history.length - 1)) * width,
+          y: height - (point.score / 100) * height,
+        }));
+  const path = points.map((p, idx) => `${idx === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const latest = history[history.length - 1].score;
+  const first = history[0].score;
+  const delta = latest - first;
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <svg className="h-9 w-40 shrink-0" viewBox={`0 0 ${width} ${height}`} fill="none" aria-hidden="true">
+        <path d={path} stroke="#2dd4bf" strokeLinecap="round" strokeWidth="1.5" />
+      </svg>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold text-white">{latest}% confidence</p>
+        <p className="text-[9px] text-[#6b7280]">
+          {history.length} {history.length === 1 ? "query" : "queries"} tracked
+          {history.length > 1 ? ` · ${delta >= 0 ? "+" : ""}${delta}% since first` : ""}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -522,11 +573,12 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const txToast = useTxToast();
   const quote = useMarketQuote(mentor.stateId);
+  const { data: confidenceHistory = [] } = useConfidenceHistory(mentor.stateId);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "system",
-      text: `Connected to ${mentor.name}. Each answer is settled on-chain before BE runs the Atoma TEE query.`,
+      text: `Connected to ${mentor.name}. Each answer is settled on-chain before BE runs the Atoma TEE query. ${mentor.name} remembers your past conversations via Walrus Memory.`,
     },
   ]);
   const [busy, setBusy] = useState(false);
@@ -561,7 +613,7 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
         {
           role: "assistant",
           text: answer.answer,
-          meta: `${answer.teeVerified ? "TEE VERIFIED" : "TEE UNVERIFIED"} / confidence ${answer.oracle.confidenceUpdated}%`,
+          meta: `${answer.teeVerified ? "TEE VERIFIED" : "TEE UNVERIFIED"} / confidence ${answer.oracle.confidenceUpdated}%${answer.memory.recalled ? " / 🧠 recalled past context" : ""}`,
         },
       ]);
     } catch (err) {
@@ -596,6 +648,10 @@ function MentorChatModal({ mentor, onClose }: { mentor: DisplayMentor; onClose: 
           <button className="rounded border border-[#374151] p-2 text-[#9ca3af] hover:text-white" onClick={onClose} type="button">
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
+        </div>
+
+        <div className="border-b border-[#1f2937] bg-black/60 px-4 py-2.5">
+          <ConfidenceTrajectory history={confidenceHistory} />
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[1fr_220px]">

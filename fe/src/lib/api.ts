@@ -55,6 +55,7 @@ export type QueryResponse = {
   access: MarketAccess;
   settlement: { txDigest: string; querier: string };
   oracle: { confidenceUpdated: number; gapFlagged: boolean };
+  memory: { recalled: boolean };
 };
 
 export const api = {

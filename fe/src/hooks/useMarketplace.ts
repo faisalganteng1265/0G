@@ -322,6 +322,39 @@ export function useGapEvents() {
   );
 }
 
+export type ConfidencePoint = {
+  score: number;
+  txDigest: string;
+  timestampMs: number;
+};
+
+// Full confidence trajectory for one mentor, oldest first — this is the
+// on-chain trail of the agent's self-assessment evolving across every
+// query, not a single point-in-time number.
+export function useConfidenceHistory(stateId?: string) {
+  return useSuiClientQuery(
+    "queryEvents",
+    { query: { MoveEventType: MOVE_EVENT_TYPES.ConfidenceUpdated }, order: "descending", limit: 50 },
+    {
+      ...liveQueryOptions,
+      enabled: Boolean(stateId),
+      select: (page): ConfidencePoint[] =>
+        page.data
+          .map((event) => {
+            const parsed = event.parsedJson as { state_id: string; score: number };
+            return {
+              stateId: parsed.state_id,
+              score: Number(parsed.score),
+              txDigest: event.id.txDigest,
+              timestampMs: Number(event.timestampMs ?? 0),
+            };
+          })
+          .filter((point) => point.stateId === stateId)
+          .sort((a, b) => a.timestampMs - b.timestampMs),
+    },
+  );
+}
+
 export type MentorActivityEvent = {
   type: "MentorRegistered" | "StorageUpdated" | "StatusChanged";
   stateId: string;

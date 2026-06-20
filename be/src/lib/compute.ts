@@ -45,14 +45,19 @@ export interface InferenceResult {
 export async function runInference(
   question: string,
   knowledgeContext: string,
-  mentorName: string
+  mentorName: string,
+  memoryContext?: string
 ): Promise<InferenceResult> {
+  const memorySection = memoryContext
+    ? `\n--- PAST CONVERSATIONS WITH THIS USER ---\n${memoryContext}\n--- END PAST CONVERSATIONS ---\n`
+    : "";
+
   const systemPrompt = `You are ${mentorName}, an AI Mentor. Answer questions based strictly on the following private expert knowledge. Always reply in the same language the user asked in.
 
 --- KNOWLEDGE BASE ---
 ${knowledgeContext}
 --- END KNOWLEDGE BASE ---
-
+${memorySection}
 Respond concisely and practically. Do not fabricate information not present in the knowledge base. If the knowledge base does not contain enough information to answer confidently, start your entire reply with the exact literal tag ${NO_KNOWLEDGE_TAG} (this tag must stay in English even though the rest of your reply is in the user's language), then explain what's missing.`;
 
   return COMPUTE_PROVIDER === "openrouter"
