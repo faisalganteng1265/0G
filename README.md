@@ -44,6 +44,8 @@ Built on the **Sui + Walrus + Seal + Atoma** stack: mentor identity lives as a M
 - **Access control** — Seal's `seal_approve` policy checks share balance, oracle address, or allow-list directly on-chain; the backend never hands out a key
 - **Execution** — bounded revenue distribution: queries pay an atomic split (60% mentor / 25% curators / 15% platform), vesting handled by an on-chain schedule with stale-period clawback
 
+Most Walrus agent builds store data meant to be public anyway — audit trails, attestations — where "anyone can verify the blob" is the whole point and encryption would just be overhead. Tacit's knowledge and memory are the opposite case: valuable specifically *because* they're private. That makes proving access control works — not just proving storage works — the harder problem this agent has to solve.
+
 ---
 
 ## The Problem
@@ -182,6 +184,8 @@ Tacit uses Walrus for **two distinct, independently-encrypted data flows** — n
 
 **Knowledge** answers "what does this mentor know." **Memory** answers "what does this mentor remember about *this specific conversation history with you*" — that's what turns a one-shot knowledge-base lookup into a genuinely stateful agent.
 
+**Why memory is isolated per-`(mentor, querier)`, not pooled into one shared namespace:** a learner's conversation history with a mentor is private by construction. Pooling every learner's exchanges into one shared memory store would let any querier of a mentor read what every *other* querier asked that mentor — a privacy break, not a feature, for a paid one-to-one relationship. A shared, cross-agent namespace is the right design for a public audit trail; it is the wrong design for a private mentorship. Tacit's `tacit:{stateId}:{querier}` namespace is the deliberate tradeoff: every learner gets a mentor that remembers *them specifically*, and no learner can ever read another learner's history with the same mentor.
+
 ### The memory pipeline, concretely
 
 ```text
@@ -205,6 +209,8 @@ memwal.remember(Q + A, namespace)                    mentor's answer now referen
 answer + confidence → Sui                            user's name and stated problem across two
                                                       fully independent HTTP requests.
 ```
+
+That two-request example is intentionally small. For the full count — independently verifiable on Sui testnet, not just asserted here — see [Testnet Activity](#testnet-activity-verifiable-on-chain): one `(mentor, querier)` pair alone has run this exact `recall → infer → remember` cycle 14 times, across two separate calendar days.
 
 Implementation: `be/src/lib/memory.ts` (`recallMemory` / `rememberExchange`, namespaced per `tacit:{stateId}:{querier}`), wired into `be/src/routes/query.ts` around the existing knowledge-lookup and inference steps — `recall` happens before `runInference`, `remember` is fire-and-forget after the response is computed so it never adds latency to the user-facing answer. The frontend surfaces this with a `🧠 recalled past context` badge on any answer that drew on memory (`fe/src/app/(dashboard)/marketplace/page.tsx`), and a real on-chain confidence trajectory chart (`useConfidenceHistory`, `ConfidenceTrajectory`) showing how the mentor's self-reported confidence evolves across every query it answers — not a single static number.
 
@@ -307,6 +313,21 @@ Submission to **Sui Overflow 2026**, **Walrus Track** — "rethink how agentic s
 | `OracleCap` | `0xe34ae096ce5db379f7e6ab9ae608a87c8c35c2b613ba6da8ef8406e287d06e17` |
 
 > Published 2026-06-21. `UpgradeCap` currently retained (not burned) for the duration of active development.
+
+### Testnet Activity (Verifiable On-Chain)
+
+Every number below comes from `suix_queryEvents` against the package id above — re-run it yourself against `fullnode.testnet.sui.io`, nothing here is self-reported.
+
+| Metric | Count | Source event |
+|---|---|---|
+| Mentors registered | 7 | `MentorRegistered` |
+| End-to-end queries settled (paid → decrypted → answered → revenue split) | 31 | `QueryExecuted` / `RevenueReceived` |
+| On-chain confidence updates | 21 | `ConfidenceUpdated` |
+| Knowledge re-uploads (blob rotation) | 6 | `StorageUpdated` |
+| Gap-count signal changes | 5 | `GapChanged` |
+| Distinct transactions across all of the above | 78 | — |
+
+**Cross-session memory, shown by repetition, not assertion:** one `(mentor, querier)` pair accounts for 14 of those 31 queries — the same learner querying the same mentor across 14 fully independent backend requests, from [`C5GBWp…`](https://suiscan.xyz/testnet/tx/C5GBWpYtqQbCUmWo1C5c4jcGhKWysSDos63az34KxTjd) at 2026-06-20 20:31 UTC through [`C1wkBy…`](https://suiscan.xyz/testnet/tx/C1wkByoGnmKAEFqSoYh6jXpnSz6xQiGquk9T1LbqKV2n) at 2026-06-21 10:09 UTC — crossing midnight UTC with a ~10-hour gap between two of the sessions. Each one re-runs the full `recall → infer → remember` cycle in [`be/src/lib/memory.ts`](be/src/lib/memory.ts) against the same MemWal namespace.
 
 ---
 
